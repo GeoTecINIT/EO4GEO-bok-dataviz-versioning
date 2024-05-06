@@ -1,7 +1,4 @@
 var d3 = require("d3");
-  
-//version array
-var storedVersions = {};
 
 var Relationtype = {
   SIMILAR: "similarTo",
@@ -696,7 +693,7 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
     if (cVersion == currentVersion) {
       textCurrent = '(Current Bok Version)';
       yearToshow = yearCurrentVersion;
-    } else if (isAnOldVersion) {searchOldVersions
+    } else if (isAnOldVersion) {
       currentLink = '<a style="color: red; font-weight: normal; cursor: pointer; text-decoration: underline;" href="https://bok.eo4geo.eu/" > the current version of the BoK </a>'
       textCurrent = '- <span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
     } else {
@@ -711,9 +708,9 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
     if (currentCod == 'GIST') currentCod = '';
     if (isAnObsoleteId) text += '- <a href="https://bok.eo4geo.eu/' + currentCod + '">version ' + currentVersion + '.0 (' + yearCurrentVersion + ') (Current Bok Version)</a>';
     text += '<p style="font-weight: bold;" >&rarr; You are viewing: version ' + cVersion + '.0 (' + yearToshow + ') ' + textCurrent + ' </p>';
-    if (isAnObsoleteId) searchOldVersions(code, domElement, currentVersion - 1, cVersion);
+    if (isAnObsoleteId) searchOldVersions(code, domElement, currentVersion, cVersion);
     else {
-      searchOldVersions(code, domElement, cVersion - 1, null);
+      searchOldVersions(code, domElement, cVersion, null);
     }
     text += '</div>';
     domElement.innerHTML += text;
@@ -724,59 +721,23 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
     mainNode.innerHTML = "";
     exports.visualizeBOKData('#bubbles', 'https://findinbok.firebaseio.com/', '#textBoK', currentVersion, version, 'orange', yearCurrentVersion, year);
     setTimeout(() => {
-      browseToConcept(codSelected);
+      if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
     }, 1000);
     found = true;
   }
 
-  //Aqui el codigo donde carga una a una
-/*
-  searchOldVersions = function (code, domElement, version, versionSelected) {
-    let foundInOld = false;
-    let text = "";
-    console.log(code);
-    console.log(version);
-    const oldVersion = version > 1 ? version - 1 : version;
-    // case when the old version selected is not the first in the list
-    if (oldVersion > 0) {
-      d3.json('https://findinbok.firebaseio.com/v' + version + '.json ').then((root, error) => {
-        for (var n = 0; n < root.concepts.length; n++) {
-          if (root.concepts[n].code == code && !foundInOld) {
-            if (versionSelected !== null && versionSelected < version) {
-              let lastChild = document.querySelector('#oldVersions p');
-              let nodeToAdd = document.querySelector('#oldVersions');
-              console.log(lastChild);
-              console.log(nodeToAdd);
-              let newNode = document.createElement("li");
-              newNode.style = 'list-style-type:none; text-indent: 2em;';
-              newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + version + ", " + root.creationYear + " )'> - version " + version + ".0 (" + root.creationYear + ")</a>";
-              nodeToAdd.insertBefore(newNode, lastChild);
-            } else if (versionSelected == null || versionSelected > version) {
-              text += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + version + ", " + root.creationYear + " )'> - version " + version + ".0 (" + root.creationYear + ")</a></li>";
-              domElement.innerHTML += text;
-            }
-            foundInOld = true;
-          }
-        }
-      });
-      setTimeout(() => {
-        searchOldVersions(code, domElement, version - 1, versionSelected);
-      }, 1000);
-    }
-  }*/
-
   searchOldVersions = function (code, domElement, version, versionSelected) {
     console.trace();
     const url = `https://findinbok.firebaseio.com/.json?shallow=true`;
-    var versionPerYear = {};
-    const versionesOrdenadas = {};
-    var text ="";
+    let versionPerYear = {};
     d3.json(url)
     .then(keys => {
+      // Delete 'current' version from keys
       delete keys['current'];
+      delete keys['v' + version];
       var versionsArr = Object.keys(keys);
       const requests = versionsArr.map(key => {
-        // Construye la URL para obtener los campos release_date y creation_date de cada versión
+        // Build the URL to get the fields release_date of creation_date
         const versionUrl = `https://findinbok.firebaseio.com/${key}/creationYear.json`;
     
         return d3.json(versionUrl)
@@ -791,8 +752,7 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
       // Espera a que todas las solicitudes se completen antes de imprimir el objeto versionPerYear
       Promise.all(requests)
         .then(() => {
-          storedVersions = versionPerYear;
-          displayOldVersions(storedVersions, versionSelected, domElement);
+          displayOldVersions(versionPerYear, versionSelected, domElement);
         });
     })
     .catch(error => {
@@ -801,14 +761,12 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
   }
 
   displayOldVersions = function (versionPerYear, versionSelected, domElement) {
-     // Ordenar las claves
-     let clavesOrdenadas = Object.keys(versionPerYear).sort((a, b) => {
+    // Order keys
+    let orderedKeys = Object.keys(versionPerYear).sort((a, b) => {
       return parseInt(b.slice(1)) - parseInt(a.slice(1)); 
     });
-    //Quitamos current y su equivalente versión para omitir duplicados
-    clavesOrdenadas = clavesOrdenadas.slice(1);
-    // Crear un nuevo objeto ordenado
-    clavesOrdenadas.forEach(clave => {
+
+    orderedKeys.forEach(clave => {
         var vers = parseInt(clave.charAt(clave.length - 1));
         if (versionSelected !== null && versionSelected < vers) {
           let lastChild = document.querySelector('#oldVersions p');
