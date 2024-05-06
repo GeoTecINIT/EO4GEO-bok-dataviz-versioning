@@ -773,6 +773,7 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
     var text ="";
     d3.json(url)
     .then(keys => {
+      delete keys['current'];
       var versionsArr = Object.keys(keys);
       const requests = versionsArr.map(key => {
         // Construye la URL para obtener los campos release_date y creation_date de cada versión
@@ -802,12 +803,10 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
   displayOldVersions = function (versionPerYear, versionSelected, domElement) {
      // Ordenar las claves
      let clavesOrdenadas = Object.keys(versionPerYear).sort((a, b) => {
-      if (a === 'current') return -1;
-      if (b === 'current') return 1; 
       return parseInt(b.slice(1)) - parseInt(a.slice(1)); 
     });
     //Quitamos current y su equivalente versión para omitir duplicados
-    clavesOrdenadas = clavesOrdenadas.slice(2);
+    clavesOrdenadas = clavesOrdenadas.slice(1);
     // Crear un nuevo objeto ordenado
     clavesOrdenadas.forEach(clave => {
         var vers = parseInt(clave.charAt(clave.length - 1));
