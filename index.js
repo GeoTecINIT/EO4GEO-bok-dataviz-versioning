@@ -1,4 +1,7 @@
-import * as d3 from "d3";
+var d3 = require("d3");
+  
+//version array
+var storedVersions = {};
 
 var Relationtype = {
   SIMILAR: "similarTo",
@@ -12,576 +15,920 @@ var Relationtype = {
   PREREQUISITEOF: "is prerequisite of"
 };
 
-const TEMPLATE_IdGraph = 'graph';
-const TEMPLATE_IdText = 'textInfo';
+// d3-compliant java object node with default values:
+CostumD3Node = function () {
+  this.name;
+  //field required by D3
+  this.nameShort = "";
+  this.description = "";
+  this.size = 100;
+  //field required by D3, equals super-concept:
+  this.parent = null;
+  this.otherParents = [];
+  this.additionalParents = [];
+  //field required by D3, equals subconcepts
+  this.children = [];
+  //other relations equal to 'relationtype'
+  this.prerequisites = [];
+  this.postrequisites = [];
+  this.similarConcepts = [];
+  this.demonstrableSkills = [];
+  //Source documents are not retrieved by the XML
+  this.sourceDocuments = [];
+  this.contributors = [];
+  this.uri = "";
 
-const width = 932;
-const height = width;
-let view;
+  //field required to discard the old one when notation is repeated
+  this.timestamp = "";
+};
 
-let codesColors = [];
+CostumD3NodeCollection = function () {
+  this.nodes = [];
+};
 
-let selectedNodes = [];
-let allNodes = {};
-let rootNodeCode = '';
-let fullBoK = {};
-let fullParsedBoK = {};
-let versionsCodes = [];
+var cD3NCollection = new CostumD3NodeCollection();
 
-let allVersions = [];
-let currSelCode = '';
-let currVersion = 'current';
+CostumD3NodeCollection.prototype.add = function (node) {
+  this.nodes.push(node);
+};
 
-const COLOR_STROKE_SELECTED = 'black';
-const COLOR_STROKE_DEFAULT = '#090909';
-const COLOR_STROKE_RESULTS = '#080808';
+CostumD3NodeCollection.prototype.pop = function () {
+  this.nodes.pop();
+};
 
-export function parseBOKData(bokJSON, v) {
+CostumD3NodeCollection.prototype.getNodeByURI = function (uri) {
+  for (var i = 0; i < this.nodes.length; i++) {
+    if (this.nodes[i].id.split("_rev")[0] == uri) {
+      return this.nodes[i];
+    }
+  }
+  return null;
+};
+
+CostumD3NodeCollection.prototype.getNodeByNameShort = function (nameShort) {
+  for (var i = 0; i < this.nodes.length; i++) {
+    if (this.nodes[i].nameShort == nameShort) {
+      return this.nodes[i];
+    }
+  }
+  return null;
+};
+
+/* FOR SEARCH FUNCTIONALITY */
+CostumD3NodeCollection.prototype.getNodesByKeyword = function (keyword, searchCode = true, searchName = true, searchDes = true, searchSkills = true) {
+  var result = []
+  keyword = keyword.toUpperCase();
+  if (searchCode) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].nameShort.toUpperCase().indexOf(keyword) > -1) {
+        if (!result.includes(this.nodes[i])) {
+          result.push(this.nodes[i]);
+        }
+      }
+    }
+  }
+  if (searchName) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].name && this.nodes[i].name.toUpperCase().indexOf(keyword) > -1) {
+        if (!result.includes(this.nodes[i])) {
+          result.push(this.nodes[i]);
+        }
+      }
+    }
+  }
+  if (searchSkills) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].demonstrableSkills != null && this.nodes[i].demonstrableSkills != "" && this.nodes[i].demonstrableSkills.length > 0) {
+        for (var j = 0; j < this.nodes[i].demonstrableSkills.length; j++) {
+          if (this.nodes[i].demonstrableSkills[j].description.toUpperCase().indexOf(keyword) > -1) {
+            if (!result.includes(this.nodes[i])) {
+              result.push(this.nodes[i]);
+            }
+          }
+        }
+      }
+    }
+  }
+  if (searchDes) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].description != null && this.nodes[i].description != "") {
+        if (this.nodes[i].description.toUpperCase().indexOf(keyword) > -1) {
+          if (!result.includes(this.nodes[i])) {
+            result.push(this.nodes[i]);
+          }
+        }
+      }
+    }
+  }
+  return result;
+};
+
+/* FOR SEARCH FUNCTIONALITY */
+CostumD3NodeCollection.prototype.getNodesIdByKeyword = function (keyword, searchCode = true, searchName = true, searchDes = true, searchSkills = true) {
+  var result = [];
+  keyword = keyword.toUpperCase();
+  if (searchCode) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].nameShort.toUpperCase().indexOf(keyword) > -1) {
+        if (!result.includes(this.nodes[i])) {
+          result.push(this.nodes[i].id);
+        }
+      }
+    }
+  }
+  if (searchName) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].name && this.nodes[i].name.toUpperCase().indexOf(keyword) > -1) {
+        if (!result.includes(this.nodes[i])) {
+          result.push(this.nodes[i].id);
+        }
+      }
+    }
+  }
+  if (searchSkills) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].demonstrableSkills != null && this.nodes[i].demonstrableSkills != "" && this.nodes[i].demonstrableSkills.length > 0) {
+        for (var j = 0; j < this.nodes[i].demonstrableSkills.length; j++) {
+          if (this.nodes[i].demonstrableSkills[j].description.toUpperCase().indexOf(keyword) > -1) {
+            if (!result.includes(this.nodes[i])) {
+              result.push(this.nodes[i].id);
+            }
+          }
+        }
+      }
+    }
+  }
+  if (searchDes) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i].description != null && this.nodes[i].description != "") {
+        if (this.nodes[i].description.toUpperCase().indexOf(keyword) > -1) {
+          if (!result.includes(this.nodes[i])) {
+            result.push(this.nodes[i].id);
+          }
+        }
+      }
+    }
+  }
+  return result;
+};
+
+exports.parseBOKData = function (bokJSON) {
+
+  var allNodes = [];
+  var namehash = {};
+  var colorhash = {
+    GI: "#40e0d0",
+    IP: "#1f77b4",
+    CF: "#aec7e8",
+    CV: "#ff7f0e",
+    DA: "#ffbb78",
+    DM: "#2ca02c",
+    DN: "#98df8a",
+    PS: "#d62728",
+    GD: "#cc5b59",
+    GS: "#9467bd",
+    AM: "#8c564b",
+    MD: "#8c564b",
+    OI: "#c49c94",
+    GC: "#e377c2",
+    PP: "#f7b6d2",
+    SD: "#7f7f7f",
+    SH: "#c7c7c7",
+    TA: "#bcbd22",
+    WB: "#07561e",
+    no: "#17becf"
+  };
+
   // loop all nodes
-  // if (v == "current")
-  allNodes[v] = [];
-  versionsCodes[v] = [];
+  for (var n = 0; n < bokJSON.concepts.length; n++) {
+    var newNode = new CostumD3Node();
+    newNode.name = bokJSON.concepts[n].name;
+    newNode.nameShort = bokJSON.concepts[n].code;
+    newNode.description = bokJSON.concepts[n].description;
+    newNode.selfAssesment = bokJSON.concepts[n].selfAssesment;
+    newNode.uri = n;
+    newNode.id = n;
+    newNode.children = [];
+    newNode.demonstrableSkills = [];
+    newNode.sourceDocuments = [];
+    newNode.contributors = [];
+    newNode.parent = null;
+    newNode.otherParents = [];
+    newNode.similarConcepts = [];
+    namehash[bokJSON.concepts[n].code] = newNode.name;
+    allNodes.push(newNode);
+  }
 
-  bokJSON.concepts.forEach((n, index) => {
-    var node = {
-      name: n.name,
-      code: n.code,
-      description: n.description,
-      selfAssesment: n.selfAssesment,
-      uri: n.link,
-      id: index,
-      value: 1,
-      children: [],
-      parents: [],
-      demonstrableSkills: [],
-      contributors: [],
-      sourceDocuments: []
-    };
-    //  if (v == "current")
-    allNodes[v].push(node);
-    versionsCodes[v].push(n.code.toLowerCase());
-
-    if (!codesColors.includes(n.code.substring(0, 2)))
-      codesColors.push(n.code.substring(0, 2))
-
-  });
-
-  console.log(codesColors)
-
-  // add children - parent
-  bokJSON.relations.forEach(r => {
-    if (r.name === Relationtype.SUBCONCEPT) {
-      if (r.target != r.source) {
-        if (!allNodes[v][r.target].children.includes(allNodes[v][r.source]))
-          allNodes[v][r.target].children.push(allNodes[v][r.source]);
-        if (!allNodes[v][r.source].parents.includes(allNodes[v][r.target]))
-          allNodes[v][r.source].parents.push(allNodes[v][r.target]);
+  for (var l = 0; l < bokJSON.relations.length; l++) {
+    // children - parent relation
+    if (bokJSON.relations[l].name == Relationtype.SUBCONCEPT) {
+      if ( allNodes[bokJSON.relations[l].source].parent != null ) {
+        allNodes[bokJSON.relations[l].source].otherParents.push(allNodes[bokJSON.relations[l].target]);
       } else {
-        console.log('Loop relation for concept: ' + r.target)
+        allNodes[bokJSON.relations[l].source].parent = allNodes[bokJSON.relations[l].target];
       }
+      //push node into childre array
+      allNodes[bokJSON.relations[l].target].children.push(allNodes[bokJSON.relations[l].source]);
+      // add parent
+
     }
-  });
-
-  // add skills
-  bokJSON.skills.forEach(skill => {
-    skill.concepts.forEach(skillconcept => {
-      allNodes[v][skillconcept].demonstrableSkills.push(skill.name);
-    });
-  });
-
-  // add contributors
-  if (bokJSON.contributors) {
-    bokJSON.contributors.forEach(con => {
-      con.concepts.forEach(c => {
-        allNodes[v][c].contributors.push({
-          name: con.name,
-          description: con.description,
-          url: con.url
-        });
-      });
-    });
-  }
-
-  // add source documents
-  bokJSON.references.forEach(ref => {
-    ref.concepts.forEach(c => {
-      allNodes[v][c].sourceDocuments.push({
-        name: ref.name,
-        description: ref.description,
-        url: ref.url
-      });
-    });
-  });
-
-  // find root node
-  let rootNode;
-
-  for (let i = 0; i < allNodes[v].length; i++) {
-    if (allNodes[v][i].parents.length == 0) {
-      rootNode = allNodes[v][i];
-      rootNodeCode = allNodes[v][i].code.toLowerCase();
-      console.log("Version " + v + " root node " + i + " code " + rootNodeCode)
-      break;
+    if (bokJSON.relations[l].name == Relationtype.SIMILARTO) {
+      //push node into childre array
+      allNodes[bokJSON.relations[l].target].similarConcepts.push(allNodes[bokJSON.relations[l].source]);
+      allNodes[bokJSON.relations[l].source].similarConcepts.push(allNodes[bokJSON.relations[l].target]);
+    }
+    if (bokJSON.relations[l].name == Relationtype.PREREQUISITEOF) {
+      //push node into childre array
+      allNodes[bokJSON.relations[l].target].prerequisites.push(allNodes[bokJSON.relations[l].source]);
+      //allNodes[bokJSON.relations[l].source].prerequisites.push(allNodes[bokJSON.relations[l].target]);
     }
   }
 
-  // fullBoK['current'] = allNodes[v];
-
-  return rootNode;
-
-  /*   // TODO: Avoid circular dependencies - keep only 3 levels
-    allNodes[v][0].children.forEach(ch => {
-      ch.children.forEach(ch1 => {
-        ch1.children.forEach(ch2 => {
-          ch2.children = [];
-        })
-      })
-    });
-
-    // return clean root
-    return allNodes[v][0];*/
-
-}
-export function getCurrSelCode() {
-  return currSelCode;
-}
-
-window.getCurrSelCode = getCurrSelCode;
-
-export function browseToConcept(code) {
-  if (code) {
-    var node = d3.select('#node-' + code.toLowerCase()).data();
-    // Can not find the node, find in old versions
-    if (node.length == 0) {
-      let foundInOld = false;
-      let versionToDisplay = 'current';
-      allVersions.forEach(v => {
-        if (versionsCodes[v].includes(code.toLowerCase())) {
-          foundInOld = true;
-          versionToDisplay = v;
-        }
-      });
-      // if found in old version
-      if (foundInOld) {
-        currSelCode = code.toLowerCase();
-        visualizeBoKVersion(versionToDisplay);
-        displayMsgObsoleteV(code, versionToDisplay);
-        // else navigate to root and show error
-      } else {
-        navigateToRoot();
-        if (code.length > 0) {
-          displayError(code);
-        }
-      }
-
-    } else {
-      zoom(node[0]);
-      displayConcept(node[0]);
+  for (var o = 0; o < bokJSON.skills.length; o++) {
+    for (var s = 0; s < bokJSON.skills[o].concepts.length; s++) {
+      var node = bokJSON.skills[o].concepts[s];
+      var skill = {};
+      skill.description = bokJSON.skills[o].name;
+      skill.nameShort = bokJSON.skills[o].name;
+      skill.uri = bokJSON.skills[o].name;
+      allNodes[node].demonstrableSkills.push(skill);
     }
-  } else {
-    navigateToRoot();
   }
-}
-window.browseToConcept = browseToConcept;
 
-export function zoomToCode(code) {
-  var node = d3.select('#node-' + code.toLowerCase()).data();
-  if (node.length > 0) {
-    zoom(node[0]);
+  for (var e = 0; e < bokJSON.references.length; e++) {
+    for (var s = 0; s < bokJSON.references[e].concepts.length; s++) {
+      var node = bokJSON.references[e].concepts[s];
+      var sourceDoc = {};
+      sourceDoc.description = bokJSON.references[e].description;
+      sourceDoc.nameShort = bokJSON.references[e].name;
+      sourceDoc.url = bokJSON.references[e].url;
+      allNodes[node].sourceDocuments.push(sourceDoc);
+    }
   }
-}
-window.zoomToCode = zoomToCode;
 
-export async function getBoKData(url) {
-  return new Promise(resolve => {
-    d3.json(url + '.json ').then((bok, error) => {
-      fullBoK = bok;
-      resolve('BoK Loaded - resolve');
-      if (error) throw error;
-    });
-  });
-}
-
-export function visualizeBoKVersion(version) {
-
-  currVersion = version;
-
-  var bokData = fullParsedBoK[version];
-
-  var pack = data => d3.pack()
-    .size([width, height])
-    .padding(3)
-    (d3.hierarchy(bokData)
-      .sum(d => d.value)
-      .sort((a, b) => b.value - a.value));
-
-  /*     var color = d3.scaleLinear()
-        .domain([0, 5])
-        .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
-        .interpolate(d3.interpolateHcl); */
-
-  // var color = d3.interpolateRainbow();
-
-  //  ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
-
-  var root = pack(bokData);
-
-  let focus = root;
-
-  d3.select('#' + TEMPLATE_IdGraph)
-    .select("svg").selectAll("circle").remove();
-  d3.select('#' + TEMPLATE_IdGraph)
-    .select("svg").selectAll("text").remove();
-
-  const svg = d3.select('#' + TEMPLATE_IdGraph)
-    .select("svg")
-    .on("click", () => zoom(root));
-
-  const node = svg.append("g")
-    .selectAll("circle")
-    .data(root)
-    // .data(root.descendants().slice(1))  // If we need to remove first element, in case root is duplicated
-    .join("circle")
-    .attr("fill", d => {
-      let code = codesColors.indexOf(d.data.code.substring(0, 2));
-      while (code >= d3.schemeSet3.length)
-        code = code - d3.schemeSet3.length;
-
-      return d3.schemeSet3[code];
-    })
-    .attr("stroke", COLOR_STROKE_DEFAULT)
-    .attr("stroke-width", "0.2px")
-    .attr("id", d => "node-" + d.data.code.toLowerCase())
-    .on("click", (event, d) => {
-      if (focus !== d) {
-        event.currentTarget.style.stroke = COLOR_STROKE_SELECTED;
-        zoom(d);
-        displayConcept(d);
+  if ( typeof bokJSON.contributors != "undefined") {
+    for (var e = 0; e < bokJSON.contributors.length; e++) {
+      for (var s = 0; s < bokJSON.contributors[e].concepts.length; s++) {
+        var node = bokJSON.contributors[e].concepts[s];
+        var cont = {};
+        cont.description = bokJSON.contributors[e].description;
+        cont.nameShort = bokJSON.contributors[e].name;
+        cont.url = bokJSON.contributors[e].url;
+        allNodes[node].contributors.push(cont);
+        allNodes[node].contributors.sort();
       }
-      event.stopPropagation();
-    }).on("mouseover", function (d) {
-      if (this.attributes.stroke.value === COLOR_STROKE_DEFAULT) this.style.strokeWidth = 1
-    })
-    .on("mouseleave", function (d) {
-      if (this.attributes.stroke.value === COLOR_STROKE_DEFAULT) this.style.strokeWidth = 0.2
-    });
-
-  const label = svg.append("g")
-    .style("font", "12px sans-serif")
-    .attr("pointer-events", "none")
-    .attr("text-anchor", "middle")
-    .selectAll("text")
-    .data(root.descendants())
-    .join("text")
-    .style("fill-opacity", d => d.parent === root ? 1 : 0)
-    .style("display", d => d.parent === root ? "inline" : "none")
-    .each(function (d) { //This function inserts a label and adds linebreaks, avoiding lines > 13 characters
-      var arr = d.data.name.split(' '),
-        maxLabelLength = 13,
-        final = [arr[0]];
-      for (var i = 1, j = 0; i < arr.length; i++) {
-        (final[j].length + arr[i].length < maxLabelLength) ? final[j] += ' ' + arr[i]: (j++, final[j] = arr[i]);
-      }
-      final.forEach((t, i) => d3.select(this).append('tspan').text(t).attr('dy', i ? '1em' : -0.5 * (j - 1) + 'em').attr('x', 0).attr('text-anchor', 'middle').attr('class', 'tspan' + i));
-    })
-
-  zoomTo([root.x, root.y, root.r * 2]);
-
-  function zoomTo(v) {
-    const k = width / v[2];
-    view = v;
-
-    label.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
-    node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`);
-    node.attr("r", d => d.r * k);
+    }
   }
 
-  function zoom(d) {
-    const focus0 = focus;
-    focus = d;
-
-    const transition = svg.transition()
-      .duration(1000)
-      .tween("zoom", d => {
-        const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
-        return t => zoomTo(i(t));
-      });
-
-    label
-      .filter(function (d) {
-        return d.parent === focus || this.style.display === "inline" || (d === focus && (d.children == null || d.children == []));
-      })
-      .transition(transition)
-      .style("fill-opacity", function (d) {
-        return d.parent === focus || (d === focus && (d.children == null || d.children == [])) ? 1 : 0;
-      })
-      .on("start", function (d) {
-        if (d.parent === focus || (d === focus && (d.children == null || d.children == [])))
-          this.style.display = "inline";
-      })
-      .on("end", function (d) {
-        if (d.parent !== focus && (d !== focus && (d.children == null || d.children == [])))
-          this.style.display = "none";
-      });
-
+  var cD3N = new CostumD3NodeCollection();
+  for (var i in allNodes) {
+    cD3N.add(allNodes[i]);
   }
 
-  window.zoom = zoom;
-  browseToConcept(currSelCode);
+  return {
+    nodes: allNodes[0],
+    relations: bokJSON.relations,
+    namehash: namehash,
+    conceptNodeCollection: cD3N,
+    colors: colorhash
+  };
 
-}
+};
 
-window.visualizeBoKVersion = visualizeBoKVersion;
-
-
-export async function visualizeBOKData(url, version) {
-
-  await getBoKData(url);
-  allVersions = Object.keys(fullBoK);
-
-  // Sort all Versions chronollogically  - current first one
-  allVersions.sort((a, b) => {
-    if (a == 'current')
-      return -1;
-    else if (b == 'current')
-      return 1;
-    else
-      return parseInt(b.split('v')[1]) - parseInt(a.split('v')[1]);
-  });
-
-  console.log("ALL VERSIONS " + allVersions)
-
-  allVersions.forEach(v => {
-    fullParsedBoK[v] = parseBOKData(fullBoK[v], v);
-  });
-
-  d3.select('#' + TEMPLATE_IdGraph)
+exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion, textToAlert, yearCurrentVersion, yearVersion) {
+  var codSelected = "GIST";
+  var currentVersion = numVersion;
+  var isAnOldVersion = false;
+  var isAnObsoleteId = false;
+  var yearCurrentVersion = yearCurrentVersion;
+  var yearVersion = yearVersion;
+  if (oldVersion !== null && numVersion != oldVersion && textToAlert == 'red') {
+    numVersion = oldVersion;
+    isAnOldVersion = true;
+  }
+  if (textToAlert == 'orange') {
+    numVersion = oldVersion;
+    isAnObsoleteId = true;
+  }
+  var COLOR_STROKE_SELECTED = "black";
+  var svg = d3.select("div" + svgId)
     .append("svg")
-    .attr("viewBox", `-${width / 2} -${height / 2} ${width} ${height}`)
-    .style("display", "block")
-    .style("cursor", "pointer");
+    .attr("preserveAspectRatio", "xMinYMin meet")
+    .attr("viewBox", "0 0 300 300")
+    .classed("svg-content", true);
 
-  visualizeBoKVersion(version);
+  var margin = 5,
+    diameter = svg.node().getAttribute('viewBox').split(" ")[2],
+    g = svg.append("g").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
 
-}
+  var color = d3.scaleLinear()
+    .domain([-1, 5])
+    .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
+    .interpolate(d3.interpolateHcl);
 
-export function searchInBoK(string, searchCode, searchName, searchDes, searchSkills, searchSD) {
-  cleanSearchInBOK();
-  cleanTextInfo();
+  var pack = d3.pack()
+    .size([diameter - margin, diameter - margin])
+    .padding(2);
+  d3.json(url + 'v' + numVersion + '.json ').then((root, error) => {
 
-  let searchInputFieldDoc = string.trim().toLowerCase();
-  if (searchInputFieldDoc != "" && searchInputFieldDoc != " ") {
+    var bokData = exports.parseBOKData(root);
+    if (error) throw error;
 
-    let results = allNodes[currVersion].filter((n) => {
-      let filterBool = searchCode && n.code.toLowerCase().includes(searchInputFieldDoc) ||
-        searchName && n.name.toLowerCase().includes(searchInputFieldDoc) ||
-        searchDes && n.description.toLowerCase().includes(searchInputFieldDoc);
+    dataAndFunctions = function () {
+      this.conceptNodeCollection = null;
+      this.zoom = null;
+      this.namehash = null;
+      this.colorhash = null;
+      this.nodes = null;
+    };
 
-      // search for coincidences in demonstrableSkills
-      if (searchSkills && !filterBool) {
-        n.demonstrableSkills.forEach(s => {
-          if (s.toLowerCase().includes(searchInputFieldDoc)) {
-            filterBool = true;
-          }
-        });
-      }
-      if (searchSD && !filterBool) {
-        n.sourceDocuments.forEach(s => {
-          if (s.name.toLowerCase().includes(searchInputFieldDoc)) {
-            filterBool = true;
-          }
-        });
+    dataAndFunctions.conceptNodeCollection = bokData.conceptNodeCollection;
+    dataAndFunctions.namehash = bokData.namehash;
+    dataAndFunctions.colorhash = bokData.colors;
 
-      }
-      return filterBool;
-    });
+    root = d3.hierarchy(bokData.nodes)
+      .sum(function (d) {
+        return d.size;
+      })
+      .sort(function (a, b) {
+        return b.value - a.value;
+      });
 
-    results.forEach(n => {
-      d3.select('#node-' + n.code.toLowerCase())
-        .attr("stroke-width", "2px")
-        .attr("stroke", COLOR_STROKE_RESULTS);
-    });
+    var focus = root,
+      nodes = pack(root).descendants(),
+      view;
 
-    selectedNodes = results;
+    dataAndFunctions.nodes = nodes;
 
-    return selectedNodes;
-  } else {
-    browseToConcept(rootNodeCode);
-    // navigateToRoot();
-    return [];
-  }
-}
+    var colorPalette = d3.scaleOrdinal(d3.schemeCategory10);
 
-export function cleanSearchInBOK() {
-  //clean search
-  selectedNodes.forEach(n => {
-    d3.select('#node-' + n.code.toLowerCase())
+    var circle = g.selectAll("circle")
+      .data(nodes)
+      .enter().append("circle")
+      .attr("r", function (d) {
+        return d.r;
+      })
+      .attr("x", function (d) {
+        return d.x;
+      })
+      .attr("y", function (d) {
+        return d.y;
+      })
+      .attr("id", function (d) {
+        return d.data.id;
+      })
+      .attr("class", function (d) {
+        return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root";
+      })
+      .style("fill", function (d) {
+        if (d.depth == 1) {
+          return dataAndFunctions.colorhash[d.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+        } else if (d.depth == 2) {
+          return dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+        } else if (d.depth == 3) {
+          return dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+        } else if (d.depth >= 4) {
+          return dataAndFunctions.colorhash[d.parent.parent.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.parent.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+        } else {
+          return "turquoise";
+        }
+      }).style("fill-opacity", function (d) {
+        if (d.depth >= 1) {
+          return "0.5";
+        } else {
+          return "1";
+        }
+      }).attr("stroke", "black")
       .attr("stroke-width", "0.2px")
-      .attr("stroke", COLOR_STROKE_DEFAULT);
-  });
-  selectedNodes = [];
-}
+      .on("click", function (d) {
+        if (focus !== d) {
+          dataAndFunctions.zoom(d);
+          codSelected = d.data.nameShort;
+          exports.displayConcept(d);
+        }
+        d3.event.stopPropagation();
+      })
+      .on("mouseover", function (d) {
+        if (this.style.stroke != COLOR_STROKE_SELECTED) this.style.strokeWidth = 1
+      })
+      .on("mouseleave", function (d) {
+        if (this.style.stroke != COLOR_STROKE_SELECTED) this.style.strokeWidth = 0.2
+      });
 
-export function navigateToRoot() {
-  console.log("Navigate to root");
-  const root = d3.select('#node-' + rootNodeCode);
-  displayConcept(root.data()[0]);
-}
+    var text = g.selectAll("text").data(nodes).enter().append("text").attr("class", "label").style("pointer-events", "none").style("fill-opacity", function (d) {
+      return d.parent === root || (d === root && d.children == null) ? 1 : 0;
+    })
+      .style("display", function (d) {
+        return d.parent === root || (d === root && d.children == null) ? "inline" : "none";
+      })
+      .style("font", '500 7px "Helvetica Neue", Helvetica, Arial, sans-serif')
+      .each(function (d) { //This function inserts a label and adds linebreaks, avoiding lines > 13 characters
+        var arr = d.data.name.split(" ");
+        var arr2 = [];
+        arr2[0] = arr[0];
+        var maxLabelLength = 13;
+        for (var i = 1, j = 0; i < arr.length; i++) {
+          if (arr2[j].length + arr[i].length < maxLabelLength)
+            arr2[j] += " " + arr[i];
+          else {
+            j++;
+            arr2[j] = arr[i];
+          }
+        }
+        for (var i = 0; i < arr2.length; i++) {
+          d3.select(this).append("tspan").text(arr2[i]).attr("dy", i ? "1em" : (-0.5 * (j - 1)) + "em").attr("x", 0).attr("text-anchor", "middle").attr("class", "tspan" + i);
+        }
+      });
 
-window.navigateToRoot = navigateToRoot;
 
-export function cleanTextInfo() {
-  var mainNode = document.getElementById(TEMPLATE_IdText)
-  mainNode.innerHTML = "";
-}
+    var node = g.selectAll("circle,text");
 
-export function displayError(code) {
-  console.log("Concept does not exists");
-  var mainNode = document.getElementById(TEMPLATE_IdText);
-  mainNode.innerHTML = "<p style='color:#c60606;'> Concept " + code + " does not exist. Use the links or the graph to navigate to a valid one. </p> " + mainNode.innerHTML;
-}
+    svg
+      .style("background", "transparent")
+      .on("click", function () {
+        dataAndFunctions.zoom(root);
+      });
 
-export function displayMsgObsoleteV(code, version) {
-  console.log("Warning, this is an old version of the Concept exists in older version, " + code + " version " + version);
-  var mainNode = document.getElementById(TEMPLATE_IdText);
-  if (!mainNode.innerHTML.includes('Warning: this is an obsolete BoK concept'))
-    mainNode.innerHTML = "<p style='color:#c60606;'> Warning: this is an obsolete BoK concept - this concept is no longer present in the <a style='color: #007bff; font-weight: 400; cursor: pointer;' onclick='navigateToRoot(); visualizeBoKVersion(\"current\")' >current</a> version. </p> " + mainNode.innerHTML;
-}
+    zoomTo([root.x, root.y, root.r * 2 + margin]);
 
-export function displayMsgOldV() {
-  console.log("Warning, this is an old version the Bok ");
-  var mainNode = document.getElementById(TEMPLATE_IdText);
-  mainNode.innerHTML = "<p style='color:orange'> Warning: this is an old version of this BoK concept; see “\Versioning”\ below for more recent version(s) </p> " + mainNode.innerHTML;
-}
+    dataAndFunctions.zoom = function zoom(d) {
+      var focus0 = focus;
+      focus = d;
 
-//displays all available content for the currently focussed concept in the description box:
-export function displayConcept(d) {
-  currSelCode = d.data.code.toLowerCase();
-  var mainNode = document.getElementById(TEMPLATE_IdText)
-  mainNode.innerHTML = "";
+      var transition = d3.transition()
+        .duration(d3.event && d3.event.altKey ? 7500 : 750)
+        .tween("zoom", function (d) {
+          var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
+          return function (t) {
+            zoomTo(i(t));
+          };
+        });
 
-  var titleNode = document.createElement("h1");
-  titleNode.id = "boktitle";
-  titleNode.innerHTML = "[" + d.data.code + "] " + d.data.name; //display Name and shortcode of concept:
-
-  window.history.pushState({}, "Find In Bok", "/" + d.data.code);
-
-  // `<h2>Superconcept:</h2><div id='bokParentNode'><a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-${d.parent.data.code}' onclick='browseToConcept(\"${d.parent.data.code}\")'>[${d.parent.data.code}] ${d.parent.data.name}</a> </div><br>`
-
-  var pNode = document.createElement("p");
-  var iconCopy = '&nbsp;&nbsp;<i class=&#39;material-icons&#39;>content_copy</i> Copy';
-
-  // TODO: ADD TO BELOW THIS FOR LTB LINK  -----    document.getElementById("permalink").innerHTML = "&nbsp;&nbsp;Copied!";    --- document.getElementById("urilink").innerHTML = "${iconCopy}"
-  pNode.innerHTML = `Permalink: <a href= 'https://ucgis-bok.web.app/${d.data.code}' target='blank'> <i class="material-icons">open_in_new</i> https://ucgis-bok.web.app/${d.data.code}</a> <a id='permalink' style='color: #007bff; font-weight: 400; cursor: pointer;' onclick='navigator.clipboard.writeText(\"https://ucgis-bok.web.app/${d.data.code}\");  document.getElementById("permalink").innerHTML = "&nbsp;&nbsp;Copied!"; '>&nbsp;&nbsp; <i class='material-icons'>content_copy</i> Copy </a>`;
-  /*  
-   TODO: UNCOMMENT THIS FOR LTB LINK
-  if (d.data.uri) {
-      pNode.innerHTML += `<br> LTB Link: <a href= '${d.data.uri}' target='blank'> <i class="material-icons">open_in_new</i> ${d.data.uri}</a>  <a id='urilink' style='color: #007bff; font-weight: 400; cursor: pointer;' onclick='navigator.clipboard.writeText("${d.data.uri}"); document.getElementById("urilink").innerHTML = "&nbsp;&nbsp;Copied!"; document.getElementById("permalink").innerHTML = "${iconCopy}"'>&nbsp;&nbsp; <i class='material-icons'>content_copy</i> Copy </a>`;
-    } */
-  mainNode.appendChild(pNode);
-
-  mainNode.appendChild(titleNode);
-  if (d.data.selfAssesment != " ") {
-    var statusNode = document.createElement("div");
-    statusNode.innerHTML = d.data.selfAssesment;
-    let statusText = document.createElement("div");
-    statusText.innerHTML = 'Status: ' + statusNode.innerText;
-    statusText.style = "margin-bottom: 10px;";
-    mainNode.appendChild(statusText);
-  }
-
-  //display description of concept
-  var descriptionNode = document.createElement("div");
-  if (d.data.description != null) {
-    var headline = "<h2>Description</h2>";
-    var currentTxt = "<div id='bokCurrentDescription'>" + d.data.description + "</div><br>";
-    descriptionNode.innerHTML = headline + currentTxt;
-  } else
-    descriptionNode.innerHTML = "";
-
-  mainNode.appendChild(descriptionNode);
-
-  if (d.parent != null) {
-    var parentNode = document.createElement("div");
-    parentNode.innerHTML = `<h2>Superconcept:</h2><div id='bokParentNode'><a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-${d.parent.data.code}' onclick='browseToConcept(\"${d.parent.data.code}\")'>[${d.parent.data.code}] ${d.parent.data.name}</a> </div><br>`;
-    mainNode.appendChild(parentNode);
-  }
-
-  var infoNode = document.createElement("div");
-
-  //display subconcepts (if any):
-  d.children && d.children.length > 0 ? displayChildren(d.children, infoNode, "Subconcepts") : null;
-
-  d.data.demonstrableSkills && d.data.demonstrableSkills.length > 0 ? displayTextList(d.data.demonstrableSkills, infoNode, "Skills") : null;
-
-  d.data.contributors && d.data.contributors.length > 0 ? displayLinksList(d.data.contributors, infoNode, "Contributors") : null;
-  d.data.sourceDocuments && d.data.sourceDocuments.length > 0 ? displayLinksList(d.data.sourceDocuments, infoNode, "Source Documents") : null;
-
-  // display versions
-  displayVersions(infoNode, d.data.code);
-  mainNode.appendChild(infoNode);
-
-  // show warnings if concept is obsolete and old version
-  if (currVersion != 'current') {
-    if (!versionsCodes['current'].includes(d.data.code.toLowerCase())) {
-      displayMsgObsoleteV(d.data.code, currVersion);
-    } else {
-      displayMsgOldV();
-    }
-  }
-
-};
-
-//displays a list of nodes such as children
-export function displayChildren(array, domElement, headline) {
-
-  array.sort((a, b) => a.data.code.localeCompare(b.data.code));
-  var text = "<h2>" + headline + " [" + array.length + "] </h2><div><ul>";
-  array.forEach(c => {
-    text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + c.data.code + "' onclick='browseToConcept(\"" + c.data.code + "\")'>[" + c.data.code + '] ' + c.data.name + "</a> <br>";
-  });
-  text += "</ul></div>";
-  domElement.innerHTML += text;
-};
-
-// displays links such as contributors and sourceDocuments
-export function displayLinksList(array, domElement, headline) {
-
-  var text = "<h2>" + headline + " [" + array.length + "] </h2><div><ul>";
-  array.forEach(l => {
-    text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' href='" + l.url + "' target='_blank' >" + l.name + "</a> <br>";
-  });
-  text += "</ul></div>";
-  domElement.innerHTML += text;
-};
-
-// displays list such as skills
-export function displayTextList(array, domElement, headline) {
-
-  var text = "<h2>" + headline + " [" + array.length + "] </h2><div><ul>";
-  array.forEach(l => {
-    text += "<li>" + l + "</li>";
-  });
-  text += "</ul></div>";
-  domElement.innerHTML += text;
-};
-
-// displays list such as skills
-export function displayVersions(domElement, conceptCode) {
-
-  var text = "<h2> Versioning [" + allVersions.length + "] </h2><div><ul>";
-  allVersions.forEach(v => {
-
-    if (versionsCodes[v].includes(conceptCode.toLowerCase())) {
-      if (v == currVersion) // if current version is the same, make it not clickable
-        text += `<li> <strong> <i class="material-icons">east</i> You are viewing: ${v} (${fullBoK[v].updateDate})</strong></li>`;
-      else
-        text += `<li> <a style='color: #007bff; font-weight: 400; cursor: pointer;' onclick='visualizeBoKVersion(\"${v}\")' >${v} (${fullBoK[v].updateDate})</a></li>`;
-    } else {
-      text += `<li> ${v} (${fullBoK[v].updateDate}) (Concept does not exist in this version)</li>`;
+      transition.selectAll("text")
+        .filter(function (d) {
+          return d.parent === focus || this.style.display === "inline" || (d === focus && (d.children == null || d.children == []));
+        })
+        .style("fill-opacity", function (d) {
+          return d.parent === focus || (d === focus && (d.children == null || d.children == [])) ? 1 : 0;
+        })
+        .on("start", function (d) {
+          if (d.parent === focus || (d === focus && (d.children == null || d.children == [])))
+            this.style.display = "inline";
+        })
+        .on("end", function (d) {
+          if (d.parent !== focus && (d !== focus && (d.children == null || d.children == [])))
+            this.style.display = "none";
+        });
     }
 
+    function zoomTo(v) {
+      var k = diameter / v[2];
+      view = v;
+      node.attr("transform", function (d) {
+        return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")";
+      });
+      circle.attr("r", function (d) {
+        return d.r * k;
+      });
+
+    }
+
+    var nodeData = dataAndFunctions.conceptNodeCollection.getNodeByNameShort("GIST");
+    exports.displayConcept(nodeData);
   });
-  text += "</ul></div>";
-  domElement.innerHTML += text;
-};
+
+  //displays all available content for the currently focussed concept in the description box:
+  exports.displayConcept = function (d) {
+    if (textId != null) {
+
+      if (textId[0] == "#")
+        textId = textId.split("#")[1];
+
+      var oldD = d;
+      if (d && d.data)
+        d = d.data;
+
+      var mainNode = document.getElementById(textId)
+      mainNode.innerHTML = "";
+
+      var titleNode = document.createElement("h4");
+      titleNode.id = "boktitle";
+      titleNode.attributes = "#boktitle";
+      titleNode.innerHTML = "[" + d.nameShort + "] " + d.name; //display Name and shortcode of concept:
+      titleNode.style="margin-bottom: 0px;";
+      window.history.pushState("object or string", "Find In Bok", "/" + d.nameShort);
+      var pNode = document.createElement("p");
+      pNode.innerHTML = "Permalink: <a href= 'https://bok.eo4geo.eu/" + d.nameShort + "'> https://bok.eo4geo.eu/" + d.nameShort + "</a>";
+      mainNode.appendChild(pNode);
+      mainNode.appendChild(titleNode);
+      if ( d.selfAssesment ){
+        var statusNode = document.createElement("div");
+        statusNode.innerHTML=d.selfAssesment;
+        let statusText = document.createElement("div");
+        statusText.innerHTML= 'Status: ' + statusNode.innerText;
+        statusText.style="margin-bottom: 10px;";
+        mainNode.appendChild(statusText);
+      }
+      if (isAnOldVersion) {
+        const obsNode = document.createElement('p');
+        let textObs = '';
+        let currentLink = "<a style='color: red; font-weight: normal; cursor: pointer; text-decoration: underline;' href='https://bok.eo4geo.eu/'> the current version of the BoK </a>"
+        textObs += '<span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
+        obsNode.innerHTML = textObs;
+        mainNode.appendChild(obsNode);
+
+      } else if (isAnObsoleteId) {
+        const obsNode = document.createElement('p');
+        let textObs = '';
+        textObs += '<span style="color: orange; font-weight: normal;">warning: this is old version of this BoK concept; see “\Versioning”\ below for more recent version(s)</span>';
+        obsNode.innerHTML = textObs;
+        mainNode.appendChild(obsNode);
+      }
+      //display description of concept.
+      var descriptionNode = document.createElement("div");
+      if (d.description != null) {
+        var timeFormat = "";
+        if (d.timestamp != null && d.timestamp != "")
+          timeFormat = "<small> Last Updated: " + new Date(d.timestamp).toUTCString() + " </small><br>";
+        var headline = "<h5>Description:</h5>";
+        var currentTxt = "<div id='currentDescription' class='hideContent'>" + d.description + "</div><br>";
+        descriptionNode.innerHTML = timeFormat + headline + currentTxt;
+      } else
+        descriptionNode.innerHTML = "";
+
+      mainNode.appendChild(descriptionNode);
+      var infoNode = document.createElement("div");
+
+      // Display hierarchy of parent concepts in a definition list:
+      if (d.parent != null) {
+        parents = [];
+        let cont = 1;
+        //trace all parents upwards from the hierarchy
+        for (var p = d.parent; p != null; p = p.parent) {
+          parents.push(p);
+        }
+        if ( d.otherParents.length > 0) cont = cont + d.otherParents.length;
+        var tab = "";
+        var text = "<h5>Superconcepts [" + cont + "] </h5><div><dl>";
+        var parent = parents.pop();
+        /* We attach the browseToConcept function in order to be able to browse to SuperConcepts
+         from the concept's list browser of the right */
+        text += "<a class='concept-name' style='color: #007bff; font-weight: 400; cursor: pointer;' onclick='browseToConcept(\"" + parent.nameShort + "\")'><b>-</b> " + parent.name + "</a>";
+        tab += "";
+        while (parents.length > 0) {
+          parent = parents.pop();
+          text += "<dd style='margin: 0 0 1.5em 0.8em'><dl><dt style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' onclick='browseToConcept(\"" + parent.nameShort + "\")'><b>-</b> " + "[" + parent.nameShort + "] " + parent.name + "</dt>";
+          tab += "</dl></dd>";
+        }
+        text += tab + "</dl></div>";
+
+        infoNode.innerHTML = text;
+      } else
+        infoNode.innerHTML = "";
+
+      if ( d.otherParents.length > 0  ) {
+        for ( let i = 0; i < d.otherParents.length ; i++ ){
+          let otherPar = [];
+          let op = d.otherParents[i];
+          while ( op != null ) {
+            otherPar.push(op);
+            op = op.parent
+          }
+          var other = otherPar.pop();
+          var text = "<div><dl>";
+          /* We attach the browseToConcept function in order to be able to browse to SuperConcepts
+           from the concept's list browser of the right */
+          text += "<a class='concept-name' style='color: #007bff; font-weight: 400; cursor: pointer;' onclick='browseToConcept(" + other.nameShort + ")'><b>-</b> " + other.name + "</a>";
+          tab += "";
+          while (otherPar.length > 0) {
+            other = otherPar.pop();
+            text += "<dd style='margin: 0 0 1.5em 0.8em'><dl><dt style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' onclick='browseToConcept(\"" + other.nameShort + "\")'><b>-</b> " + "[" + other.nameShort + "] " + other.name + "</dt>";
+            tab += "</dl></dd>";
+          }
+          text += tab + "</dl></div>";
+          infoNode.innerHTML += text;
+        }
+      }
+
+      window.history.pushState("object or string", "Find In Bok", "/" + d.nameShort);
+      //display description of subconcepts (if any):
+      displayOrderedList(d.children, "name", "Subconcepts", infoNode, "boksubconcepts");
+
+      //display description of prerequisites (if any):
+      displayOrderedList(d.prerequisites, null, "Prequisites", infoNode, "bokprequisites");
+
+      //display description of postrequisites (if any):
+      displayOrderedList(d.postrequisites, null, "Postrequisites", infoNode, "bokpostrequisites");
+
+      //display description of similar concepts (if any):
+      displayOrderedList(d.similarConcepts, null, "Similar concepts", infoNode, "boksimilar");
+
+      //display description of demonstrable skills (if any):
+      displayUnorderedList(d.demonstrableSkills, "description", "Skills", infoNode, "bokskills");
+
+      //display contributors of concept (if any):
+      displayUnorderedList(d.contributors, "url", "Contributors", infoNode, "boksource");
+
+      //display source documents of concept (if any):
+      displayUnorderedList(d.sourceDocuments, "url", "Source documents", infoNode, "boksource");
+
+
+
+      displayVersions(d.nameShort, infoNode, numVersion, yearVersion);
+
+      mainNode.appendChild(infoNode);
+
+    }
+  };
+
+  //displays a list of textelements in HTML
+  displayOrderedList = function (array, propertyname, headline, domElement, namehash, node) {
+    if (array != null && array.length != 0) {
+      // if children, sort them
+      if (array[0].nameShort != null) {
+        array.sort(function (a, b) {
+          if (a.nameShort > b.nameShort) {
+            return 1;
+          }
+          if (a.nameShort < b.nameShort) {
+            return -1;
+          }
+          // a must be equal to b
+          return 0;
+        });
+      }
+      var text = "";
+      text += "";
+      text += "<h5>" + headline + " [" + array.length + "] </h5><div><ul>";
+      for (var i = 0, j = array.length; i < j; i++) {
+        var nameShort;
+        var value;
+        if (propertyname != null) { //For Subconcepts and Demonstrable Skills
+          value = array[i][propertyname];
+          nameShort = array[i]['nameShort'];
+        } else { //For Similar, Postrequisites and Prerequisites
+          value = array[i];
+          nameShort = array[i]['nameShort'];
+        }
+        if (namehash != null) {
+          value = namehash[value];
+        }
+
+        /* We attach the browseToConcept function to each subconcept of the list */
+        if (headline == "Subconcepts") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>[" + nameShort + '] ' + array[i][propertyname] + "</a> <br>";
+        } else if (headline == "Similar concepts" || headline == "Postrequisites" || headline == "Prequisites") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>[" + nameShort + '] ' + array[i].name + "</a> <br>";
+        } else {
+          text += "<a>" + value + "</a> <br>";
+        }
+      };
+      text += "</ul></div>";
+      domElement.innerHTML += text;
+    } //else
+    //	domElement.innerHTML = "";
+  };
+
+  displayVersions = function (code, domElement, cVersion, year) {
+    let textCurrent = "";
+    let currentLink = "";
+    let yearToshow = year;
+    if (cVersion == currentVersion) {
+      textCurrent = '(Current Bok Version)';
+      yearToshow = yearCurrentVersion;
+    } else if (isAnOldVersion) {searchOldVersions
+      currentLink = '<a style="color: red; font-weight: normal; cursor: pointer; text-decoration: underline;" href="https://bok.eo4geo.eu/" > the current version of the BoK </a>'
+      textCurrent = '- <span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
+    } else {
+      textCurrent = '- <span style="color: orange; font-weight: normal;">warning: this is old version of this BoK concept; more recent versions are listed above</span>';;
+    }
+    let currentCod = document.getElementById('boktitle').textContent.split(']')[0].replace('[', '');
+
+
+    var text = "";
+    text += "";
+    text += '<h5>Versioning </h5><div id="oldVersions" style="text-indent: 2em;">';
+    if (currentCod == 'GIST') currentCod = '';
+    if (isAnObsoleteId) text += '- <a href="https://bok.eo4geo.eu/' + currentCod + '">version ' + currentVersion + '.0 (' + yearCurrentVersion + ') (Current Bok Version)</a>';
+    text += '<p style="font-weight: bold;" >&rarr; You are viewing: version ' + cVersion + '.0 (' + yearToshow + ') ' + textCurrent + ' </p>';
+    if (isAnObsoleteId) searchOldVersions(code, domElement, currentVersion - 1, cVersion);
+    else {
+      searchOldVersions(code, domElement, cVersion - 1, null);
+    }
+    text += '</div>';
+    domElement.innerHTML += text;
+  }
+
+  visualizeOldBokData = function (version, year) {
+    let mainNode = document.getElementById('bubbles');
+    mainNode.innerHTML = "";
+    exports.visualizeBOKData('#bubbles', 'https://findinbok.firebaseio.com/', '#textBoK', currentVersion, version, 'orange', yearCurrentVersion, year);
+    setTimeout(() => {
+      browseToConcept(codSelected);
+    }, 1000);
+    found = true;
+  }
+
+  //Aqui el codigo donde carga una a una
+/*
+  searchOldVersions = function (code, domElement, version, versionSelected) {
+    let foundInOld = false;
+    let text = "";
+    console.log(code);
+    console.log(version);
+    const oldVersion = version > 1 ? version - 1 : version;
+    // case when the old version selected is not the first in the list
+    if (oldVersion > 0) {
+      d3.json('https://findinbok.firebaseio.com/v' + version + '.json ').then((root, error) => {
+        for (var n = 0; n < root.concepts.length; n++) {
+          if (root.concepts[n].code == code && !foundInOld) {
+            if (versionSelected !== null && versionSelected < version) {
+              let lastChild = document.querySelector('#oldVersions p');
+              let nodeToAdd = document.querySelector('#oldVersions');
+              console.log(lastChild);
+              console.log(nodeToAdd);
+              let newNode = document.createElement("li");
+              newNode.style = 'list-style-type:none; text-indent: 2em;';
+              newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + version + ", " + root.creationYear + " )'> - version " + version + ".0 (" + root.creationYear + ")</a>";
+              nodeToAdd.insertBefore(newNode, lastChild);
+            } else if (versionSelected == null || versionSelected > version) {
+              text += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + version + ", " + root.creationYear + " )'> - version " + version + ".0 (" + root.creationYear + ")</a></li>";
+              domElement.innerHTML += text;
+            }
+            foundInOld = true;
+          }
+        }
+      });
+      setTimeout(() => {
+        searchOldVersions(code, domElement, version - 1, versionSelected);
+      }, 1000);
+    }
+  }*/
+
+  searchOldVersions = function (code, domElement, version, versionSelected) {
+    console.trace();
+    const url = `https://findinbok.firebaseio.com/.json?shallow=true`;
+    var versionPerYear = {};
+    const versionesOrdenadas = {};
+    var text ="";
+    d3.json(url)
+    .then(keys => {
+      var versionsArr = Object.keys(keys);
+      const requests = versionsArr.map(key => {
+        // Construye la URL para obtener los campos release_date y creation_date de cada versión
+        const versionUrl = `https://findinbok.firebaseio.com/${key}/creationYear.json`;
+    
+        return d3.json(versionUrl)
+          .then(data => {
+            versionPerYear[key] = data;
+          })
+          .catch(error => {
+            console.error(`Error al obtener datos de la versión ${key}:`, error);
+          });
+      });
+    
+      // Espera a que todas las solicitudes se completen antes de imprimir el objeto versionPerYear
+      Promise.all(requests)
+        .then(() => {
+          storedVersions = versionPerYear;
+          displayOldVersions(storedVersions, versionSelected, domElement);
+        });
+    })
+    .catch(error => {
+      console.error('Error al obtener las claves de primer nivel:', error);
+    }); 
+  }
+
+  displayOldVersions = function (versionPerYear, versionSelected, domElement) {
+     // Ordenar las claves
+     let clavesOrdenadas = Object.keys(versionPerYear).sort((a, b) => {
+      if (a === 'current') return -1;
+      if (b === 'current') return 1; 
+      return parseInt(b.slice(1)) - parseInt(a.slice(1)); 
+    });
+    //Quitamos current y su equivalente versión para omitir duplicados
+    clavesOrdenadas = clavesOrdenadas.slice(2);
+    // Crear un nuevo objeto ordenado
+    clavesOrdenadas.forEach(clave => {
+        var vers = parseInt(clave.charAt(clave.length - 1));
+        if (versionSelected !== null && versionSelected < vers) {
+          let lastChild = document.querySelector('#oldVersions p');
+          let nodeToAdd = document.querySelector('#oldVersions');
+          let newNode = document.createElement("li");
+          newNode.style = 'list-style-type:none; text-indent: 2em;';
+          newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + versionPerYear[clave] + " )'> - version " + vers + ".0 (" + versionPerYear[clave] + ")</a>";
+          nodeToAdd.insertBefore(newNode, lastChild);
+        } else if (versionSelected == null || versionSelected > vers) {
+          domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + versionPerYear[clave] + " )'> - version " + vers + ".0 (" + versionPerYear[clave] + ")</a></li>";
+        }
+    });
+  }
+
+  //displays a list of textelements in HTML
+  displayUnorderedList = function (array, propertyname, headline, domElement, idNode) {
+    if (array != null && array.length != 0) {
+      var text = "";
+      text += "";
+      text += "<h5>" + headline + " [" + array.length + "] </h5><div #" + idNode + " id=" + idNode + "><ul>";
+      for (var i = 0, j = array.length; i < j; i++) {
+        var nameShort;
+        var value;
+        if (propertyname != null) { //For Subconcepts and Demonstrable Skills and Source Documents
+          value = array[i][propertyname];
+          nameShort = array[i]['nameShort'];
+        } else { //For Similar, Postrequisites and Prerequisites
+          value = array[i];
+          nameShort = array[i];
+        }
+
+        /* We attach the browseToConcept function to each subconcept of the list */
+        if (headline == "Subconcepts") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>" + "[" + nameShort + "] " + value + "</a> <br>";
+        } else if (headline == "Similar concepts" || headline == "Postrequisites" || headline == "Prequisites") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' onclick='browseToConcept(\"" + nameShort + "\")'>" + value + "</a> <br>";
+        } else if (headline == "Source documents") {
+          if (value.length > 1) {
+            text += "<li><a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a></li>";
+          } else {
+            text += "<li><a>" + nameShort + "</a></li>";
+          }
+        } else if (headline == "Contributors") {
+          if ( i == j-1 ) {
+            text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a> ";
+          } else if (value.length > 1) {
+            text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a>, ";
+          }  else{
+            text += "<p>" + nameShort + "</p>, ";
+          }
+        } else if (headline == "Skills") {
+          text += "<li>" + value + "</li>";
+        } else {
+          text += "<a>" + value + "</a> <br> ";
+        }
+      };
+      text += "</ul></div>";
+      domElement.innerHTML += text;
+    }
+  },
+
+    browseToConcept = function (nameShort) {
+      var node = null;
+      codSelected = nameShort;
+      dataAndFunctions.nodes.forEach(n => {
+        if (n.data.nameShort == nameShort) {
+          node = n;
+          return;
+        }
+      });
+      if (node != null) {
+        var nodeData = dataAndFunctions.conceptNodeCollection.getNodeByNameShort(nameShort);
+        exports.displayConcept(nodeData);
+        dataAndFunctions.zoom(node);
+      }
+      if (isAnOldVersion) {
+        isAnObsoleteId = true;
+        isAnOldVersion = false;
+      }
+    },
+    exports.browseToConcept = function (nameShort) {
+      browseToConcept(nameShort);
+    }
+
+  var selectedNodes = [];
+
+  exports.searchInBoK = function (string, searchCode, searchName, searchDes, searchSkills) {
+    exports.cleanSearchInBOK();
+
+    searchInputFieldDoc = string.trim();
+
+    if (searchInputFieldDoc != "" && searchInputFieldDoc != " ") {
+      selectedNodes = dataAndFunctions.conceptNodeCollection.getNodesIdByKeyword(searchInputFieldDoc, searchCode, searchName, searchDes, searchSkills);
+      //highlight search
+      for (var i = 0; i < selectedNodes.length; i++) {
+        var circle = document.getElementById(selectedNodes[i]);
+        if (circle != null) {
+          circle.style.stroke = COLOR_STROKE_SELECTED;
+          circle.style.strokeWidth = "2px";
+        }
+      }
+    }
+    return dataAndFunctions.conceptNodeCollection.getNodesByKeyword(searchInputFieldDoc, searchCode, searchName, searchDes, searchSkills);
+  }
+
+  exports.cleanSearchInBOK = function (d) {
+    //clean search
+    for (var i = 0; i < selectedNodes.length; i++) {
+      var circle = document.getElementById(selectedNodes[i]);
+      if (circle != null) {
+        circle.style.stroke = "";
+        circle.style.strokeWidth = "";
+      }
+    }
+    selectedNodes = [];
+  }
+
+  exports.searchInBoKAndWriteResults = function (string) {
+    var results = exports.searchInBoK(string);
+
+  }
+}
