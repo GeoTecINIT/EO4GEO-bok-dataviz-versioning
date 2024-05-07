@@ -292,21 +292,9 @@ exports.parseBOKData = function (bokJSON) {
 
 };
 
-exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion, textToAlert, yearCurrentVersion, yearVersion) {
+exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, isAnOldVersion, isAnObsoleteId) {
   var codSelected = "GIST";
-  var currentVersion = numVersion;
-  var isAnOldVersion = false;
-  var isAnObsoleteId = false;
-  var yearCurrentVersion = yearCurrentVersion;
-  var yearVersion = yearVersion;
-  if (oldVersion !== null && numVersion != oldVersion && textToAlert == 'red') {
-    numVersion = oldVersion;
-    isAnOldVersion = true;
-  }
-  if (textToAlert == 'orange') {
-    numVersion = oldVersion;
-    isAnObsoleteId = true;
-  }
+
   var COLOR_STROKE_SELECTED = "black";
   var svg = d3.select("div" + svgId)
     .append("svg")
@@ -326,176 +314,317 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
   var pack = d3.pack()
     .size([diameter - margin, diameter - margin])
     .padding(2);
-  d3.json(url + 'v' + numVersion + '.json ').then((root, error) => {
+  
+  var bokData = exports.parseBOKData(bok);
 
-    var bokData = exports.parseBOKData(root);
-    if (error) throw error;
+  dataAndFunctions = function () {
+    this.conceptNodeCollection = null;
+    this.zoom = null;
+    this.namehash = null;
+    this.colorhash = null;
+    this.nodes = null;
+  };
 
-    dataAndFunctions = function () {
-      this.conceptNodeCollection = null;
-      this.zoom = null;
-      this.namehash = null;
-      this.colorhash = null;
-      this.nodes = null;
-    };
+  dataAndFunctions.conceptNodeCollection = bokData.conceptNodeCollection;
+  dataAndFunctions.namehash = bokData.namehash;
+  dataAndFunctions.colorhash = bokData.colors;
 
-    dataAndFunctions.conceptNodeCollection = bokData.conceptNodeCollection;
-    dataAndFunctions.namehash = bokData.namehash;
-    dataAndFunctions.colorhash = bokData.colors;
-
-    root = d3.hierarchy(bokData.nodes)
-      .sum(function (d) {
-        return d.size;
-      })
-      .sort(function (a, b) {
-        return b.value - a.value;
-      });
-
-    var focus = root,
-      nodes = pack(root).descendants(),
-      view;
-
-    dataAndFunctions.nodes = nodes;
-
-    var colorPalette = d3.scaleOrdinal(d3.schemeCategory10);
-
-    var circle = g.selectAll("circle")
-      .data(nodes)
-      .enter().append("circle")
-      .attr("r", function (d) {
-        return d.r;
-      })
-      .attr("x", function (d) {
-        return d.x;
-      })
-      .attr("y", function (d) {
-        return d.y;
-      })
-      .attr("id", function (d) {
-        return d.data.id;
-      })
-      .attr("class", function (d) {
-        return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root";
-      })
-      .style("fill", function (d) {
-        if (d.depth == 1) {
-          return dataAndFunctions.colorhash[d.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
-        } else if (d.depth == 2) {
-          return dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
-        } else if (d.depth == 3) {
-          return dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
-        } else if (d.depth >= 4) {
-          return dataAndFunctions.colorhash[d.parent.parent.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.parent.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
-        } else {
-          return "turquoise";
-        }
-      }).style("fill-opacity", function (d) {
-        if (d.depth >= 1) {
-          return "0.5";
-        } else {
-          return "1";
-        }
-      }).attr("stroke", "black")
-      .attr("stroke-width", "0.2px")
-      .on("click", function (d) {
-        if (focus !== d) {
-          dataAndFunctions.zoom(d);
-          codSelected = d.data.nameShort;
-          exports.displayConcept(d);
-        }
-        d3.event.stopPropagation();
-      })
-      .on("mouseover", function (d) {
-        if (this.style.stroke != COLOR_STROKE_SELECTED) this.style.strokeWidth = 1
-      })
-      .on("mouseleave", function (d) {
-        if (this.style.stroke != COLOR_STROKE_SELECTED) this.style.strokeWidth = 0.2
-      });
-
-    var text = g.selectAll("text").data(nodes).enter().append("text").attr("class", "label").style("pointer-events", "none").style("fill-opacity", function (d) {
-      return d.parent === root || (d === root && d.children == null) ? 1 : 0;
+  root = d3.hierarchy(bokData.nodes)
+    .sum(function (d) {
+      return d.size;
     })
-      .style("display", function (d) {
-        return d.parent === root || (d === root && d.children == null) ? "inline" : "none";
+    .sort(function (a, b) {
+      return b.value - a.value;
+    });
+
+  var focus = root,
+    nodes = pack(root).descendants(),
+    view;
+
+  dataAndFunctions.nodes = nodes;
+
+  var colorPalette = d3.scaleOrdinal(d3.schemeCategory10);
+
+  var circle = g.selectAll("circle")
+    .data(nodes)
+    .enter().append("circle")
+    .attr("r", function (d) {
+      return d.r;
+    })
+    .attr("x", function (d) {
+      return d.x;
+    })
+    .attr("y", function (d) {
+      return d.y;
+    })
+    .attr("id", function (d) {
+      return d.data.id;
+    })
+    .attr("class", function (d) {
+      return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root";
+    })
+    .style("fill", function (d) {
+      if (d.depth == 1) {
+        return dataAndFunctions.colorhash[d.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+      } else if (d.depth == 2) {
+        return dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+      } else if (d.depth == 3) {
+        return dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+      } else if (d.depth >= 4) {
+        return dataAndFunctions.colorhash[d.parent.parent.parent.data.nameShort.substring(0, 2)] ? dataAndFunctions.colorhash[d.parent.parent.parent.data.nameShort.substring(0, 2)] : dataAndFunctions.colorhash['no'];
+      } else {
+        return "turquoise";
+      }
+    }).style("fill-opacity", function (d) {
+      if (d.depth >= 1) {
+        return "0.5";
+      } else {
+        return "1";
+      }
+    }).attr("stroke", "black")
+    .attr("stroke-width", "0.2px")
+    .on("click", function (d) {
+      if (focus !== d) {
+        dataAndFunctions.zoom(d);
+        codSelected = d.data.nameShort;
+        displayConcept(d);
+      }
+      d3.event.stopPropagation();
+    })
+    .on("mouseover", function (d) {
+      if (this.style.stroke != COLOR_STROKE_SELECTED) this.style.strokeWidth = 1
+    })
+    .on("mouseleave", function (d) {
+      if (this.style.stroke != COLOR_STROKE_SELECTED) this.style.strokeWidth = 0.2
+    });
+
+  var text = g.selectAll("text").data(nodes).enter().append("text").attr("class", "label").style("pointer-events", "none").style("fill-opacity", function (d) {
+    return d.parent === root || (d === root && d.children == null) ? 1 : 0;
+  })
+    .style("display", function (d) {
+      return d.parent === root || (d === root && d.children == null) ? "inline" : "none";
+    })
+    .style("font", '500 7px "Helvetica Neue", Helvetica, Arial, sans-serif')
+    .each(function (d) { //This function inserts a label and adds linebreaks, avoiding lines > 13 characters
+      var arr = d.data.name.split(" ");
+      var arr2 = [];
+      arr2[0] = arr[0];
+      var maxLabelLength = 13;
+      for (var i = 1, j = 0; i < arr.length; i++) {
+        if (arr2[j].length + arr[i].length < maxLabelLength)
+          arr2[j] += " " + arr[i];
+        else {
+          j++;
+          arr2[j] = arr[i];
+        }
+      }
+      for (var i = 0; i < arr2.length; i++) {
+        d3.select(this).append("tspan").text(arr2[i]).attr("dy", i ? "1em" : (-0.5 * (j - 1)) + "em").attr("x", 0).attr("text-anchor", "middle").attr("class", "tspan" + i);
+      }
+    });
+
+
+  var node = g.selectAll("circle,text");
+
+  svg
+    .style("background", "transparent")
+    .on("click", function () {
+      dataAndFunctions.zoom(root);
+    });
+
+  zoomTo([root.x, root.y, root.r * 2 + margin]);
+
+  dataAndFunctions.zoom = function zoom(d) {
+    var focus0 = focus;
+    focus = d;
+
+    var transition = d3.transition()
+      .duration(d3.event && d3.event.altKey ? 7500 : 750)
+      .tween("zoom", function (d) {
+        var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
+        return function (t) {
+          zoomTo(i(t));
+        };
+      });
+
+    transition.selectAll("text")
+      .filter(function (d) {
+        return d.parent === focus || this.style.display === "inline" || (d === focus && (d.children == null || d.children == []));
       })
-      .style("font", '500 7px "Helvetica Neue", Helvetica, Arial, sans-serif')
-      .each(function (d) { //This function inserts a label and adds linebreaks, avoiding lines > 13 characters
-        var arr = d.data.name.split(" ");
-        var arr2 = [];
-        arr2[0] = arr[0];
-        var maxLabelLength = 13;
-        for (var i = 1, j = 0; i < arr.length; i++) {
-          if (arr2[j].length + arr[i].length < maxLabelLength)
-            arr2[j] += " " + arr[i];
-          else {
-            j++;
-            arr2[j] = arr[i];
+      .style("fill-opacity", function (d) {
+        return d.parent === focus || (d === focus && (d.children == null || d.children == [])) ? 1 : 0;
+      })
+      .on("start", function (d) {
+        if (d.parent === focus || (d === focus && (d.children == null || d.children == [])))
+          this.style.display = "inline";
+      })
+      .on("end", function (d) {
+        if (d.parent !== focus && (d !== focus && (d.children == null || d.children == [])))
+          this.style.display = "none";
+      });
+  }
+
+  function zoomTo(v) {
+    var k = diameter / v[2];
+    view = v;
+    node.attr("transform", function (d) {
+      return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")";
+    });
+    circle.attr("r", function (d) {
+      return d.r * k;
+    });
+
+  }
+
+  var nodeData = dataAndFunctions.conceptNodeCollection.getNodeByNameShort("GIST");
+
+  //displays a list of textelements in HTML
+  displayUnorderedList = function (array, propertyname, headline, domElement, idNode) {
+    if (array != null && array.length != 0) {
+      var text = "";
+      text += "";
+      text += "<h5>" + headline + " [" + array.length + "] </h5><div #" + idNode + " id=" + idNode + "><ul>";
+      for (var i = 0, j = array.length; i < j; i++) {
+        var nameShort;
+        var value;
+        if (propertyname != null) { //For Subconcepts and Demonstrable Skills and Source Documents
+          value = array[i][propertyname];
+          nameShort = array[i]['nameShort'];
+        } else { //For Similar, Postrequisites and Prerequisites
+          value = array[i];
+          nameShort = array[i];
+        }
+
+        /* We attach the browseToConcept function to each subconcept of the list */
+        if (headline == "Subconcepts") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>" + "[" + nameShort + "] " + value + "</a> <br>";
+        } else if (headline == "Similar concepts" || headline == "Postrequisites" || headline == "Prequisites") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' onclick='browseToConcept(\"" + nameShort + "\")'>" + value + "</a> <br>";
+        } else if (headline == "Source documents") {
+          if (value.length > 1) {
+            text += "<li><a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a></li>";
+          } else {
+            text += "<li><a>" + nameShort + "</a></li>";
           }
+        } else if (headline == "Contributors") {
+          if ( i == j-1 ) {
+            text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a> ";
+          } else if (value.length > 1) {
+            text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a>, ";
+          }  else{
+            text += "<p>" + nameShort + "</p>, ";
+          }
+        } else if (headline == "Skills") {
+          text += "<li>" + value + "</li>";
+        } else {
+          text += "<a>" + value + "</a> <br> ";
         }
-        for (var i = 0; i < arr2.length; i++) {
-          d3.select(this).append("tspan").text(arr2[i]).attr("dy", i ? "1em" : (-0.5 * (j - 1)) + "em").attr("x", 0).attr("text-anchor", "middle").attr("class", "tspan" + i);
+      };
+      text += "</ul></div>";
+      domElement.innerHTML += text;
+    }
+  },
+
+  //displays a list of textelements in HTML
+  displayOrderedList = function (array, propertyname, headline, domElement, namehash, node) {
+    if (array != null && array.length != 0) {
+      // if children, sort them
+      if (array[0].nameShort != null) {
+        array.sort(function (a, b) {
+          if (a.nameShort > b.nameShort) {
+            return 1;
+          }
+          if (a.nameShort < b.nameShort) {
+            return -1;
+          }
+          // a must be equal to b
+          return 0;
+        });
+      }
+      var text = "";
+      text += "";
+      text += "<h5>" + headline + " [" + array.length + "] </h5><div><ul>";
+      for (var i = 0, j = array.length; i < j; i++) {
+        var nameShort;
+        var value;
+        if (propertyname != null) { //For Subconcepts and Demonstrable Skills
+          value = array[i][propertyname];
+          nameShort = array[i]['nameShort'];
+        } else { //For Similar, Postrequisites and Prerequisites
+          value = array[i];
+          nameShort = array[i]['nameShort'];
         }
-      });
+        if (namehash != null) {
+          value = namehash[value];
+        }
 
+        /* We attach the browseToConcept function to each subconcept of the list */
+        if (headline == "Subconcepts") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>[" + nameShort + '] ' + array[i][propertyname] + "</a> <br>";
+        } else if (headline == "Similar concepts" || headline == "Postrequisites" || headline == "Prequisites") {
+          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>[" + nameShort + '] ' + array[i].name + "</a> <br>";
+        } else {
+          text += "<a>" + value + "</a> <br>";
+        }
+      };
+      text += "</ul></div>";
+      domElement.innerHTML += text;
+    } //else
+    //	domElement.innerHTML = "";
+  };
 
-    var node = g.selectAll("circle,text");
+  searchOldVersions = function (domElement) {
+    let orderedKeys = Array.from(oldVersionMap.keys()).sort((a, b) => {
+      return parseInt(b.slice(1)) - parseInt(a.slice(1)); 
+    });
 
-    svg
-      .style("background", "transparent")
-      .on("click", function () {
-        dataAndFunctions.zoom(root);
-      });
+    orderedKeys.forEach(clave => {
+      var vers = parseInt(clave.charAt(clave.length - 1));
+      if (version < vers) {
+        let lastChild = document.querySelector('#oldVersions p');
+        let nodeToAdd = document.querySelector('#oldVersions');
+        let newNode = document.createElement("li");
+        newNode.style = 'list-style-type:none; text-indent: 2em;';
+        newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + oldVersionMap.get(clave) + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
+        nodeToAdd.insertBefore(newNode, lastChild);
+      } else if (version > vers) {
+        domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + oldVersionMap.get(clave) + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
+      }
+    });
+  }
 
-    zoomTo([root.x, root.y, root.r * 2 + margin]);
-
-    dataAndFunctions.zoom = function zoom(d) {
-      var focus0 = focus;
-      focus = d;
-
-      var transition = d3.transition()
-        .duration(d3.event && d3.event.altKey ? 7500 : 750)
-        .tween("zoom", function (d) {
-          var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
-          return function (t) {
-            zoomTo(i(t));
-          };
-        });
-
-      transition.selectAll("text")
-        .filter(function (d) {
-          return d.parent === focus || this.style.display === "inline" || (d === focus && (d.children == null || d.children == []));
-        })
-        .style("fill-opacity", function (d) {
-          return d.parent === focus || (d === focus && (d.children == null || d.children == [])) ? 1 : 0;
-        })
-        .on("start", function (d) {
-          if (d.parent === focus || (d === focus && (d.children == null || d.children == [])))
-            this.style.display = "inline";
-        })
-        .on("end", function (d) {
-          if (d.parent !== focus && (d !== focus && (d.children == null || d.children == [])))
-            this.style.display = "none";
-        });
+  displayVersions = function (code, domElement, cVersion, year) {
+    let textCurrent = "";
+    let currentLink = "";
+    let yearToshow = year;
+    if (cVersion == currentVersion) {
+      textCurrent = '(Current Bok Version)';
+      yearToshow = yearCurrentVersion;
+    } else if (isAnOldVersion) {
+      currentLink = '<a style="color: red; font-weight: normal; cursor: pointer; text-decoration: underline;" href="https://bok.eo4geo.eu/" > the current version of the BoK </a>'
+      textCurrent = '- <span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
+    } else {
+      textCurrent = '- <span style="color: orange; font-weight: normal;">warning: this is old version of this BoK concept; more recent versions are listed above</span>';;
     }
+    let currentCod = document.getElementById('boktitle').textContent.split(']')[0].replace('[', '');
 
-    function zoomTo(v) {
-      var k = diameter / v[2];
-      view = v;
-      node.attr("transform", function (d) {
-        return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")";
-      });
-      circle.attr("r", function (d) {
-        return d.r * k;
-      });
 
+    var text = "";
+    text += "";
+    text += '<h5>Versioning </h5><div id="oldVersions" style="text-indent: 2em;">';
+    if (currentCod == 'GIST') currentCod = '';
+    if (isAnObsoleteId) text += '- <a href="https://bok.eo4geo.eu/' + currentCod + '">version ' + currentVersion + '.0 (' + yearCurrentVersion + ') (Current Bok Version)</a>';
+    text += '<p style="font-weight: bold;" >&rarr; You are viewing: version ' + cVersion + '.0 (' + yearToshow + ') ' + textCurrent + ' </p>';
+    text += '</div>';
+    domElement.innerHTML += text;
+    if (isAnObsoleteId) searchOldVersions(domElement, currentVersion, cVersion);
+    else {
+      searchOldVersions(domElement, cVersion, null);
     }
-
-    var nodeData = dataAndFunctions.conceptNodeCollection.getNodeByNameShort("GIST");
-    exports.displayConcept(nodeData);
-  });
+  }
 
   //displays all available content for the currently focussed concept in the description box:
-  exports.displayConcept = function (d) {
+  displayConcept = function (d) {
     if (textId != null) {
 
       if (textId[0] == "#")
@@ -631,90 +760,14 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
 
 
 
-      displayVersions(d.nameShort, infoNode, numVersion, yearVersion);
+      displayVersions(d.nameShort, infoNode, version, bok.creationYear);
 
       mainNode.appendChild(infoNode);
 
     }
   };
 
-  //displays a list of textelements in HTML
-  displayOrderedList = function (array, propertyname, headline, domElement, namehash, node) {
-    if (array != null && array.length != 0) {
-      // if children, sort them
-      if (array[0].nameShort != null) {
-        array.sort(function (a, b) {
-          if (a.nameShort > b.nameShort) {
-            return 1;
-          }
-          if (a.nameShort < b.nameShort) {
-            return -1;
-          }
-          // a must be equal to b
-          return 0;
-        });
-      }
-      var text = "";
-      text += "";
-      text += "<h5>" + headline + " [" + array.length + "] </h5><div><ul>";
-      for (var i = 0, j = array.length; i < j; i++) {
-        var nameShort;
-        var value;
-        if (propertyname != null) { //For Subconcepts and Demonstrable Skills
-          value = array[i][propertyname];
-          nameShort = array[i]['nameShort'];
-        } else { //For Similar, Postrequisites and Prerequisites
-          value = array[i];
-          nameShort = array[i]['nameShort'];
-        }
-        if (namehash != null) {
-          value = namehash[value];
-        }
-
-        /* We attach the browseToConcept function to each subconcept of the list */
-        if (headline == "Subconcepts") {
-          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>[" + nameShort + '] ' + array[i][propertyname] + "</a> <br>";
-        } else if (headline == "Similar concepts" || headline == "Postrequisites" || headline == "Prequisites") {
-          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>[" + nameShort + '] ' + array[i].name + "</a> <br>";
-        } else {
-          text += "<a>" + value + "</a> <br>";
-        }
-      };
-      text += "</ul></div>";
-      domElement.innerHTML += text;
-    } //else
-    //	domElement.innerHTML = "";
-  };
-
-  displayVersions = function (code, domElement, cVersion, year) {
-    let textCurrent = "";
-    let currentLink = "";
-    let yearToshow = year;
-    if (cVersion == currentVersion) {
-      textCurrent = '(Current Bok Version)';
-      yearToshow = yearCurrentVersion;
-    } else if (isAnOldVersion) {
-      currentLink = '<a style="color: red; font-weight: normal; cursor: pointer; text-decoration: underline;" href="https://bok.eo4geo.eu/" > the current version of the BoK </a>'
-      textCurrent = '- <span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
-    } else {
-      textCurrent = '- <span style="color: orange; font-weight: normal;">warning: this is old version of this BoK concept; more recent versions are listed above</span>';;
-    }
-    let currentCod = document.getElementById('boktitle').textContent.split(']')[0].replace('[', '');
-
-
-    var text = "";
-    text += "";
-    text += '<h5>Versioning </h5><div id="oldVersions" style="text-indent: 2em;">';
-    if (currentCod == 'GIST') currentCod = '';
-    if (isAnObsoleteId) text += '- <a href="https://bok.eo4geo.eu/' + currentCod + '">version ' + currentVersion + '.0 (' + yearCurrentVersion + ') (Current Bok Version)</a>';
-    text += '<p style="font-weight: bold;" >&rarr; You are viewing: version ' + cVersion + '.0 (' + yearToshow + ') ' + textCurrent + ' </p>';
-    if (isAnObsoleteId) searchOldVersions(code, domElement, currentVersion, cVersion);
-    else {
-      searchOldVersions(code, domElement, cVersion, null);
-    }
-    text += '</div>';
-    domElement.innerHTML += text;
-  }
+  displayConcept(nodeData);
 
   visualizeOldBokData = function (version, year) {
     let mainNode = document.getElementById('bubbles');
@@ -725,108 +778,6 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
     }, 1000);
     found = true;
   }
-
-  searchOldVersions = function (code, domElement, version, versionSelected) {
-    console.trace();
-    const url = `https://findinbok.firebaseio.com/.json?shallow=true`;
-    let versionPerYear = {};
-    d3.json(url)
-    .then(keys => {
-      // Delete 'current' version from keys
-      delete keys['current'];
-      delete keys['v' + version];
-      var versionsArr = Object.keys(keys);
-      const requests = versionsArr.map(key => {
-        // Build the URL to get the fields release_date of creation_date
-        const versionUrl = `https://findinbok.firebaseio.com/${key}/creationYear.json`;
-    
-        return d3.json(versionUrl)
-          .then(data => {
-            versionPerYear[key] = data;
-          })
-          .catch(error => {
-            console.error(`Error al obtener datos de la versión ${key}:`, error);
-          });
-      });
-    
-      // Espera a que todas las solicitudes se completen antes de imprimir el objeto versionPerYear
-      Promise.all(requests)
-        .then(() => {
-          displayOldVersions(versionPerYear, versionSelected, domElement);
-        });
-    })
-    .catch(error => {
-      console.error('Error al obtener las claves de primer nivel:', error);
-    }); 
-  }
-
-  displayOldVersions = function (versionPerYear, versionSelected, domElement) {
-    // Order keys
-    let orderedKeys = Object.keys(versionPerYear).sort((a, b) => {
-      return parseInt(b.slice(1)) - parseInt(a.slice(1)); 
-    });
-
-    orderedKeys.forEach(clave => {
-        var vers = parseInt(clave.charAt(clave.length - 1));
-        if (versionSelected !== null && versionSelected < vers) {
-          let lastChild = document.querySelector('#oldVersions p');
-          let nodeToAdd = document.querySelector('#oldVersions');
-          let newNode = document.createElement("li");
-          newNode.style = 'list-style-type:none; text-indent: 2em;';
-          newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + versionPerYear[clave] + " )'> - version " + vers + ".0 (" + versionPerYear[clave] + ")</a>";
-          nodeToAdd.insertBefore(newNode, lastChild);
-        } else if (versionSelected == null || versionSelected > vers) {
-          domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + versionPerYear[clave] + " )'> - version " + vers + ".0 (" + versionPerYear[clave] + ")</a></li>";
-        }
-    });
-  }
-
-  //displays a list of textelements in HTML
-  displayUnorderedList = function (array, propertyname, headline, domElement, idNode) {
-    if (array != null && array.length != 0) {
-      var text = "";
-      text += "";
-      text += "<h5>" + headline + " [" + array.length + "] </h5><div #" + idNode + " id=" + idNode + "><ul>";
-      for (var i = 0, j = array.length; i < j; i++) {
-        var nameShort;
-        var value;
-        if (propertyname != null) { //For Subconcepts and Demonstrable Skills and Source Documents
-          value = array[i][propertyname];
-          nameShort = array[i]['nameShort'];
-        } else { //For Similar, Postrequisites and Prerequisites
-          value = array[i];
-          nameShort = array[i];
-        }
-
-        /* We attach the browseToConcept function to each subconcept of the list */
-        if (headline == "Subconcepts") {
-          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' id='sc-" + nameShort + "' onclick='browseToConcept(\"" + nameShort + "\")'>" + "[" + nameShort + "] " + value + "</a> <br>";
-        } else if (headline == "Similar concepts" || headline == "Postrequisites" || headline == "Prequisites") {
-          text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' class='concept-name' onclick='browseToConcept(\"" + nameShort + "\")'>" + value + "</a> <br>";
-        } else if (headline == "Source documents") {
-          if (value.length > 1) {
-            text += "<li><a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a></li>";
-          } else {
-            text += "<li><a>" + nameShort + "</a></li>";
-          }
-        } else if (headline == "Contributors") {
-          if ( i == j-1 ) {
-            text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a> ";
-          } else if (value.length > 1) {
-            text += "<a style='color: #007bff; font-weight: 400; cursor: pointer;' target='_blank' href='" + value + "'>" + nameShort + "</a>, ";
-          }  else{
-            text += "<p>" + nameShort + "</p>, ";
-          }
-        } else if (headline == "Skills") {
-          text += "<li>" + value + "</li>";
-        } else {
-          text += "<a>" + value + "</a> <br> ";
-        }
-      };
-      text += "</ul></div>";
-      domElement.innerHTML += text;
-    }
-  },
 
     browseToConcept = function (nameShort) {
       var node = null;
@@ -839,7 +790,7 @@ exports.visualizeBOKData = function (svgId, url, textId, numVersion, oldVersion,
       });
       if (node != null) {
         var nodeData = dataAndFunctions.conceptNodeCollection.getNodeByNameShort(nameShort);
-        exports.displayConcept(nodeData);
+        displayConcept(nodeData);
         dataAndFunctions.zoom(node);
       }
       if (isAnOldVersion) {
