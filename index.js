@@ -585,10 +585,10 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
         let nodeToAdd = document.querySelector('#oldVersions');
         let newNode = document.createElement("li");
         newNode.style = 'list-style-type:none; text-indent: 2em;';
-        newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + oldVersionMap.get(clave) + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
+        newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
         nodeToAdd.insertBefore(newNode, lastChild);
       } else if (version > vers) {
-        domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + ", " + oldVersionMap.get(clave) + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
+        domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
       }
     });
   }
@@ -617,10 +617,7 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
     text += '<p style="font-weight: bold;" >&rarr; You are viewing: version ' + cVersion + '.0 (' + yearToshow + ') ' + textCurrent + ' </p>';
     text += '</div>';
     domElement.innerHTML += text;
-    if (isAnObsoleteId) searchOldVersions(domElement, currentVersion, cVersion);
-    else {
-      searchOldVersions(domElement, cVersion, null);
-    }
+    searchOldVersions(domElement);
   }
 
   //displays all available content for the currently focussed concept in the description box:
@@ -769,14 +766,17 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
 
   displayConcept(nodeData);
 
-  visualizeOldBokData = function (version, year) {
+  visualizeOldBokData = function (version) {
     let mainNode = document.getElementById('bubbles');
     mainNode.innerHTML = "";
-    exports.visualizeBOKData('#bubbles', 'https://findinbok.firebaseio.com/', '#textBoK', currentVersion, version, 'orange', yearCurrentVersion, year);
-    setTimeout(() => {
-      if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
-    }, 1000);
-    found = true;
+    d3.json('https://eo4geo-uji-backup.firebaseio.com/v' + version + '.json')
+      .then((data) => {
+        exports.visualizeBOKData('#bubbles', '#textBoK', data, oldVersionMap, version, currentVersion, yearCurrentVersion, false, true);
+        setTimeout(() => {
+          if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
+        }, 1000);
+        found = true;
+      })
   }
 
     browseToConcept = function (nameShort) {
