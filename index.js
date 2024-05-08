@@ -573,6 +573,17 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
     //	domElement.innerHTML = "";
   };
 
+  loadOldBokEvent = function (version, code) {
+    const Event = new CustomEvent('loadOldBokEvent', {
+      detail: {
+        version: version,
+        code: code
+      }
+    });
+  
+    document.dispatchEvent(Event);
+  }
+
   searchOldVersions = function (domElement) {
     let orderedKeys = Array.from(oldVersionMap.keys()).sort((a, b) => {
       return parseInt(b.slice(1)) - parseInt(a.slice(1)); 
@@ -585,10 +596,10 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
         let nodeToAdd = domElement.querySelector('#oldVersions');
         let newNode = document.createElement("li");
         newNode.style = 'list-style-type:none; text-indent: 2em;';
-        newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' data-value='" + vers +"' data-code='" + codSelected  +"'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
+        newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' onClick='loadOldBokEvent(" + vers +", \"" + codSelected  +"\")'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
         nodeToAdd.insertBefore(newNode, lastChild);
       } else if (version > vers) {
-        domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' data-value='" + vers +"' data-code='" + codSelected  +"'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
+        domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' onClick='loadOldBokEvent(" + vers +", \"" + codSelected  +"\")''> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
       }
     });
   }
