@@ -585,10 +585,10 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
         let nodeToAdd = domElement.querySelector('#oldVersions');
         let newNode = document.createElement("li");
         newNode.style = 'list-style-type:none; text-indent: 2em;';
-        newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
+        newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' data-value='" + vers +"' data-code='" + codSelected  +"'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
         nodeToAdd.insertBefore(newNode, lastChild);
       } else if (version > vers) {
-        domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onclick=' visualizeOldBokData(" + vers + " )'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
+        domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' data-value='" + vers +"' data-code='" + codSelected  +"'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
       }
     });
   }
@@ -765,19 +765,6 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
   };
 
   displayConcept(nodeData);
-
-  visualizeOldBokData = function (newVersion) {
-    let mainNode = document.getElementById('bubbles');
-    mainNode.innerHTML = "";
-    d3.json('https://eo4geo-uji-backup.firebaseio.com/v' + newVersion + '.json')
-      .then((data) => {
-        exports.visualizeBOKData('#bubbles', '#textBoK', data, oldVersionMap, newVersion, currentVersion, yearCurrentVersion, false, true);
-        setTimeout(() => {
-          if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
-        }, 1000);
-        found = true;
-      })
-  }
 
     browseToConcept = function (nameShort) {
       var node = null;
