@@ -320,21 +320,21 @@ searchInOldBok = async function (code, version) {
   }
 }
 
-exports.visualizeBOKData = async function (url, version, code) {
+exports.visualizeBOKData = async function (url, code) {
   firebase.setURL(url);
   const svgId = '#bubbles';
   const textId = '#textBoK';
-  const bok = await firebase.getBokVersion(version);
-  const oldVersionMap = await firebase.getOldVersionsData();
   const currentVersion = firebase.getCurrentVersion();
   const yearCurrentVersion = firebase.getYearCurrentVersion();
+  const bok = await firebase.getBokVersion(currentVersion);
+  const oldVersionMap = await firebase.getOldVersionsData();
 
   let found = false;
 
   if (code != null) {
     Object.keys(bok['concepts']).forEach(currentBok => {
-      if (bok['concepts'][currentBok].code === id && !found) {
-        getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, false, false);
+      if (bok['concepts'][currentBok].code === code && !found) {
+        getBOKData(svgId, textId, bok, oldVersionMap, currentVersion, currentVersion, yearCurrentVersion, false, false);
         setTimeout(() => {
           if (code !== "" && code !== "GIST") browseToConcept(code);
         }, 1000);
@@ -342,10 +342,10 @@ exports.visualizeBOKData = async function (url, version, code) {
       }
     });
     if (!found) {
-      await searchInOldBok(code, version);
+      await searchInOldBok(code, currentVersion);
     }
   } else {
-    getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, false, false);
+    getBOKData(svgId, textId, bok, oldVersionMap, currentVersion, currentVersion, yearCurrentVersion, false, false);
   }
 }
 
