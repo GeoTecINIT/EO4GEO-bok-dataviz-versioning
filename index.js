@@ -315,8 +315,8 @@ exports.visualizeBOKData = async function (url, code) {
     const textId = '#textBoK';
     const bok = await firebase.getBokVersion("v" + version);
     const oldVersionMap = await firebase.getOldVersionsData();
-    const currentVersion = firebase.getCurrentVersion();
-    const yearCurrentVersion = firebase.getYearCurrentVersion();
+    const currentVersion = await firebase.getCurrentVersion();
+    const yearCurrentVersion = await firebase.getYearCurrentVersion();
     if (bok) {
       Object.keys(bok['concepts']).forEach(oldBokKey => {
         if (bok['concepts'][oldBokKey].code === codSelected) {
