@@ -1,4 +1,7 @@
 var d3 = require("d3");
+const { FirebaseService } = require("./firebase");
+
+const firebase = new FirebaseService;
 
 var Relationtype = {
   SIMILAR: "similarTo",
@@ -292,7 +295,61 @@ exports.parseBOKData = function (bokJSON) {
 
 };
 
-exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, isAnOldVersion, isAnObsoleteId) {
+searchInOldBok = async function (code, version) {
+  let foundInOld = false;
+  const oldVersion = version - 1;
+  const svgId = '#bubbles';
+  const textId = '#textBoK';
+  const bok = await firebase.getBokVersion(version);
+  const oldVersionMap = await firebase.getOldVersionsData();
+  const currentVersion = firebase.getCurrentVersion();
+  const yearCurrentVersion = firebase.getYearCurrentVersion();
+  if (bok) {
+    Object.keys(bok['concepts']).forEach(oldBokKey => {
+      if (bok['concepts'][oldBokKey].code === code) {
+        getBOKData(svgId, textId, bok, oldVersionMap, oldVersion, currentVersion, yearCurrentVersion, true, false);
+        setTimeout(() => {
+          if (code !== "" && code !== "GIST") browseToConcept(code);
+        }, 1000);
+        foundInOld = true;
+      }
+    });
+    if (!foundInOld) {
+      await searchInOldBok(code, oldVersion);
+    }
+  }
+}
+
+exports.visualizeBOKData = async function (url, version, code) {
+  firebase.setURL(url);
+  const svgId = '#bubbles';
+  const textId = '#textBoK';
+  const bok = await firebase.getBokVersion(version);
+  const oldVersionMap = await firebase.getOldVersionsData();
+  const currentVersion = firebase.getCurrentVersion();
+  const yearCurrentVersion = firebase.getYearCurrentVersion();
+
+  let found = false;
+
+  if (code != null) {
+    Object.keys(bok['concepts']).forEach(currentBok => {
+      if (bok['concepts'][currentBok].code === id && !found) {
+        getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, false, false);
+        setTimeout(() => {
+          if (code !== "" && code !== "GIST") browseToConcept(code);
+        }, 1000);
+        found = true;
+      }
+    });
+    if (!found) {
+      await searchInOldBok(code, version);
+    }
+  } else {
+    getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, false, false);
+  }
+}
+
+getBOKData = function (svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, isAnOldVersion, isAnObsoleteId) {
   var codSelected = "GIST";
 
   var COLOR_STROKE_SELECTED = "black";
@@ -573,15 +630,15 @@ exports.visualizeBOKData = function (svgId, textId, bok, oldVersionMap, version,
     //	domElement.innerHTML = "";
   };
 
-  loadOldBokEvent = function (version, code) {
-    const Event = new CustomEvent('loadOldBokEvent', {
-      detail: {
-        version: version,
-        code: code
-      }
-    });
-  
-    document.dispatchEvent(Event);
+  loadOldBokEvent = async function (version, code) {
+    const mainNode = document.getElementById('bubbles');
+    mainNode.innerHTML = "";
+    const data = await firebase.getBokVersion("v" + version);
+    const versionsData = await firebase.getOldVersionsData();
+    getBOKData(svgId, textId, data, versionsData, version, currentVersion, yearCurrentVersion, false, true);
+    setTimeout(() => {
+      if (code !== "" && code !== "GIST") browseToConcept(code);
+    }, 1000);
   }
 
   searchOldVersions = function (domElement) {

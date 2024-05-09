@@ -1,14 +1,24 @@
 export class FirebaseService {
 
-    URL_BASE = 'https://findinbok.firebaseio.com/';
+    URL_BASE;
     bokMap = new Map();
     versionsMap = new Map();
-    currentVersion;
-  
-    constructor() {
+
+    setURL(url) {
+      this.URL_BASE = url;
+    }
+
+    async getCurrentVersion() {
       const currentVersionUrl = 'current/version.json';
       this.getDataFromFirebase(currentVersionUrl).then((response) => {
-        this.currentVersion = 'v' + response;
+        return 'v' + response;
+      });
+    }
+
+    async getYearCurrentVersion() {
+      const yearCurrentVersionUrl = 'current/version.json';
+      this.getDataFromFirebase(yearCurrentVersionUrl).then((response) => {
+        return 'v' + response;
       });
     }
   
