@@ -32,7 +32,7 @@ import * as bok from '@eo4geo/find-in-bok-dataviz';
 [...]
 
 // will render the graphical view and the textual view from the current version in database
-bok.visualizeBOKData('', null); 
+bok.visualizeBOKData('https://eo4geo-uji.firebaseio.com/', null); 
 
 ```
 
