@@ -1,7 +1,6 @@
 var d3 = require("d3");
 var firebase = require("./firebase");
 
-// TODO
 URL_BASE = "";
 
 var Relationtype = {
@@ -296,18 +295,32 @@ exports.parseBOKData = function (bokJSON) {
 
 };
 
+// Function for visualizing BoK data, taking URL and code as parameters
 exports.visualizeBOKData = async function (url, code) {
+  // Setting Firebase URL
   firebase.setURL(url);
+
+  // IDs for SVG and text elements
   const svgId = '#bubbles';
   const textId = '#textBoK';
+
+  // Fetching current version and year from Firebase
   const currentVersion = await firebase.getCurrentVersion();
   const yearCurrentVersion = await firebase.getYearCurrentVersion();
+
+  // Fetching BoK data for the current version
   const bok = await firebase.getBokVersion("v" + currentVersion);
+
+  // Fetching map with old versions (key) and their release year (value)
   const oldVersionMap = await firebase.getOldVersionsData();
+
+  // Variable to track the current concept code
   let codSelected = code;
 
+  // Variable to track if the code is found
   let found = false;
 
+  // Function to recursively search for concept in older versions of BoK
   searchInOldBok = async function (version) {
     let foundInOld = false;
     const oldVersion = version - 1;
@@ -317,23 +330,30 @@ exports.visualizeBOKData = async function (url, code) {
     const oldVersionMap = await firebase.getOldVersionsData();
     const currentVersion = await firebase.getCurrentVersion();
     const yearCurrentVersion = await firebase.getYearCurrentVersion();
+
+    // Recursive call to search in older version if not found in current version
     if (bok) {
       Object.keys(bok['concepts']).forEach(oldBokKey => {
         if (bok['concepts'][oldBokKey].code === codSelected) {
+          // Displaying BoK data for the found concept
           exports.getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, true, false);
           setTimeout(() => {
+            // Browsing to the concept after displaying
             if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
           }, 1000);
           foundInOld = true;
         }
       });
       if (!foundInOld) {
+        // If not found in the current version, search in older versions recursively
         await searchInOldBok(oldVersion);
       }
     }
   }
 
+  // Exported function to visualize BoK data
   exports.getBOKData = function (svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, isAnOldVersion, isAnObsoleteId) {
+    // Handling data visualization using D3.js
     var COLOR_STROKE_SELECTED = "black";
     var svg = d3.select("div" + svgId)
       .append("svg")
@@ -612,18 +632,23 @@ exports.visualizeBOKData = async function (url, code) {
       //	domElement.innerHTML = "";
     };
 
+    // Function to load data for an older version of the BoK
     loadOldBokEvent = async function (version, code) {
       const mainNode = document.getElementById('bubbles');
       mainNode.innerHTML = "";
       const data = await firebase.getBokVersion("v" + version);
       const versionsData = await firebase.getOldVersionsData();
+      // Display data for the older version
       exports.getBOKData(svgId, textId, data, versionsData, version, currentVersion, yearCurrentVersion, false, true);
       setTimeout(() => {
+        // Browsing to the concept after displaying
         if (code !== "" && code !== "GIST") browseToConcept(code);
       }, 1000);
     }
 
+    // Function to search and display older versions
     searchOldVersions = function (domElement) {
+      // Sorting the keys of oldVersionMap
       let orderedKeys = Array.from(oldVersionMap.keys()).sort((a, b) => {
         return parseInt(b.slice(1)) - parseInt(a.slice(1)); 
       });
@@ -631,6 +656,7 @@ exports.visualizeBOKData = async function (url, code) {
       orderedKeys.forEach(clave => {
         var vers = parseInt(clave.charAt(clave.length - 1));
         if (version < vers) {
+          // Adding link for older versions before the current version
           let lastChild = domElement.querySelector('#oldVersions p');
           let nodeToAdd = domElement.querySelector('#oldVersions');
           let newNode = document.createElement("li");
@@ -638,11 +664,13 @@ exports.visualizeBOKData = async function (url, code) {
           newNode.innerHTML = "<a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' onClick='loadOldBokEvent(" + vers +", \"" + codSelected  +"\")'> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a>";
           nodeToAdd.insertBefore(newNode, lastChild);
         } else if (version > vers) {
+          // Adding link for older versions after the current version
           domElement.innerHTML += "<li style='list-style-type:none; text-indent: 2em;'><a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' id='oldVersionLink' onClick='loadOldBokEvent(" + vers +", \"" + codSelected  +"\")''> - version " + vers + ".0 (" + oldVersionMap.get(clave) + ")</a></li>";
         }
       });
     }
 
+    // Function to display versions and handle warnings for current version, old versions, and obsolete concepts
     displayVersions = function (code, domElement, cVersion, year) {
       let textCurrent = "";
       let currentLink = "";
@@ -651,14 +679,16 @@ exports.visualizeBOKData = async function (url, code) {
         textCurrent = '(Current Bok Version)';
         yearToshow = yearCurrentVersion;
       } else if (isAnOldVersion) {
+        // Displaying warning for an obsolete concept
         currentLink = '<a style="color: red; font-weight: normal; cursor: pointer; text-decoration: underline;" href="https://bok.eo4geo.eu/" > the current version of the BoK </a>'
         textCurrent = '- <span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
       } else {
+        // Displaying warning for an old version
         textCurrent = '- <span style="color: orange; font-weight: normal;">warning: this is old version of this BoK concept; more recent versions are listed above</span>';;
       }
       let currentCod = document.getElementById('boktitle').textContent.split(']')[0].replace('[', '');
 
-
+      // Generating HTML for displaying version information
       var text = "";
       text += "";
       text += '<h5>Versioning </h5><div id="oldVersions" style="text-indent: 2em;">';
@@ -684,6 +714,7 @@ exports.visualizeBOKData = async function (url, code) {
         var mainNode = document.getElementById(textId)
         mainNode.innerHTML = "";
 
+        // Creating title node
         var titleNode = document.createElement("h4");
         titleNode.id = "boktitle";
         titleNode.attributes = "#boktitle";
@@ -694,6 +725,8 @@ exports.visualizeBOKData = async function (url, code) {
         pNode.innerHTML = "Permalink: <a href= 'https://bok.eo4geo.eu/" + d.nameShort + "'> https://bok.eo4geo.eu/" + d.nameShort + "</a>";
         mainNode.appendChild(pNode);
         mainNode.appendChild(titleNode);
+
+        // Displaying status
         if ( d.selfAssesment ){
           var statusNode = document.createElement("div");
           statusNode.innerHTML=d.selfAssesment;
@@ -702,6 +735,8 @@ exports.visualizeBOKData = async function (url, code) {
           statusText.style="margin-bottom: 10px;";
           mainNode.appendChild(statusText);
         }
+        
+        // Displaying warning for obsolete concepts or old versions
         if (isAnOldVersion) {
           const obsNode = document.createElement('p');
           let textObs = '';
@@ -816,6 +851,7 @@ exports.visualizeBOKData = async function (url, code) {
 
     displayConcept(nodeData);
 
+    // Function to browse to a concept
       browseToConcept = function (nameShort) {
         var node = null;
         codSelected = nameShort;
@@ -839,8 +875,10 @@ exports.visualizeBOKData = async function (url, code) {
         browseToConcept(nameShort);
       }
 
+    // Array to store selected nodes
     var selectedNodes = [];
 
+    // Function to search for a concept in the BoK and highlight it
     exports.searchInBoK = function (string, searchCode, searchName, searchDes, searchSkills) {
       exports.cleanSearchInBOK();
 
@@ -860,8 +898,8 @@ exports.visualizeBOKData = async function (url, code) {
       return dataAndFunctions.conceptNodeCollection.getNodesByKeyword(searchInputFieldDoc, searchCode, searchName, searchDes, searchSkills);
     }
 
+    // Function to clean search highlighting
     exports.cleanSearchInBOK = function (d) {
-      //clean search
       for (var i = 0; i < selectedNodes.length; i++) {
         var circle = document.getElementById(selectedNodes[i]);
         if (circle != null) {
@@ -878,20 +916,26 @@ exports.visualizeBOKData = async function (url, code) {
     }
   }
 
+  // Initial check if code is provided
   if (codSelected != null) {
+    // Iterating through concepts in the current version to find the specified code
     Object.keys(bok['concepts']).forEach(currentBok => {
       if (bok['concepts'][currentBok].code === codSelected && !found) {
+        // Displaying BoK data for the found concept
         exports.getBOKData(svgId, textId, bok, oldVersionMap, currentVersion, currentVersion, yearCurrentVersion, false, false);
         setTimeout(() => {
+          // Browsing to the concept after displaying
           if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
         }, 1000);
         found = true;
       }
     });
+    // If not found in the current version, search in older versions
     if (!found) {
       await searchInOldBok(currentVersion);
     }
   } else {
+    // If no code provided, display BoK data for the current version
     exports.getBOKData(svgId, textId, bok, oldVersionMap, currentVersion, currentVersion, yearCurrentVersion, false, false);
   }
 }

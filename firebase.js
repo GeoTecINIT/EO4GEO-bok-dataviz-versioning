@@ -4,10 +4,12 @@ let currentVersion;
 let yearCurrentVersion;
 let URL_BASE;
 
+// Function to set the base URL for Firebase
 exports.setURL = function(url) {
   URL_BASE = url;
 }
 
+// Function to get the current BOK version from Firebase
 exports.getCurrentVersion = async function() {
   if (currentVersion) return currentVersion;
   const currentVersionUrl = 'current/version.json';
@@ -16,6 +18,7 @@ exports.getCurrentVersion = async function() {
   return currentVersion;
 }
 
+// Function to get the year of the current BOK version from Firebase
 exports.getYearCurrentVersion = async function() {
   if (yearCurrentVersion) return yearCurrentVersion;
   const yearCurrentVersionUrl = 'current/updateDate.json';
@@ -23,6 +26,7 @@ exports.getYearCurrentVersion = async function() {
   return yearCurrentVersion;
 }
 
+// Function to get the BOK data for a specific version from Firebase
 exports.getBokVersion = async function(version) {
   const queryVersion = version === ("v" + currentVersion) ? 'current' : version;
   if (!bokMap.has(queryVersion)) {
@@ -32,6 +36,7 @@ exports.getBokVersion = async function(version) {
   return bokMap.get(queryVersion);
 }
 
+// Function to get a map with old versions (key) and their release year (value)
 exports.getOldVersionsData = async function() {
   if (versionsMap.size === 0) {
     const versionsUrl = '.json?shallow=true';
@@ -47,6 +52,7 @@ exports.getOldVersionsData = async function() {
   return versionsMap;
 }
 
+// Function to fetch data from Firebase given a URL
 async function getDataFromFirebase(url) {
   try {
     const response = await fetch(URL_BASE + url);
