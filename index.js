@@ -313,14 +313,14 @@ exports.visualizeBOKData = async function (url, code) {
     const oldVersion = version - 1;
     const svgId = '#bubbles';
     const textId = '#textBoK';
-    const bok = await firebase.getBokVersion(version);
+    const bok = await firebase.getBokVersion("v" + version);
     const oldVersionMap = await firebase.getOldVersionsData();
     const currentVersion = firebase.getCurrentVersion();
     const yearCurrentVersion = firebase.getYearCurrentVersion();
     if (bok) {
       Object.keys(bok['concepts']).forEach(oldBokKey => {
         if (bok['concepts'][oldBokKey].code === codSelected) {
-          exports.getBOKData(svgId, textId, bok, oldVersionMap, oldVersion, currentVersion, yearCurrentVersion, true, false);
+          exports.getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, true, false);
           setTimeout(() => {
             if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
           }, 1000);
@@ -883,13 +883,13 @@ exports.visualizeBOKData = async function (url, code) {
       if (bok['concepts'][currentBok].code === codSelected && !found) {
         exports.getBOKData(svgId, textId, bok, oldVersionMap, currentVersion, currentVersion, yearCurrentVersion, false, false);
         setTimeout(() => {
-          if (code !== "" && code !== "GIST") browseToConcept(code);
+          if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
         }, 1000);
         found = true;
       }
     });
     if (!found) {
-      await searchInOldBok(code, currentVersion);
+      await searchInOldBok(currentVersion);
     }
   } else {
     exports.getBOKData(svgId, textId, bok, oldVersionMap, currentVersion, currentVersion, yearCurrentVersion, false, false);
