@@ -18,7 +18,10 @@
     "eo4geo"
   ],
   "author": "Claudia Perez <clperez@uji.es>",
-  "contributors": ["Aida <amuriach@uji.es>", "Marc Pardo <pardoma@uji.es>"],
+  "contributors": [
+    "Aida <amuriach@uji.es>",
+    "Marc Pardo <pardoma@uji.es>"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
