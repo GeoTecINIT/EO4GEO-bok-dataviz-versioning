@@ -302,7 +302,7 @@ exports.visualizeBOKData = async function (url, code) {
 
   // IDs for SVG and text elements
   const svgId = '#bubbles';
-  const textId = '#textBoK';
+  const textId = '#textInfo';
 
   // Fetching current version and year from Firebase
   const currentVersion = await firebase.getCurrentVersion();
@@ -325,7 +325,7 @@ exports.visualizeBOKData = async function (url, code) {
     let foundInOld = false;
     const oldVersion = version - 1;
     const svgId = '#bubbles';
-    const textId = '#textBoK';
+    const textId = '#textInfo';
     const bok = await firebase.getBokVersion("v" + version);
     const oldVersionMap = await firebase.getOldVersionsData();
     const currentVersion = await firebase.getCurrentVersion();
