@@ -12,12 +12,12 @@ npm i @eo4geo/find-in-bok-dataviz
 
 ## Usage
 
-Place a div and give it an id.
-If you want to show also the textual information, place a div and give it an id.
+Place a div and give it this ids.
+Use 'bubbles' for the graphical visualisation of the bok and 'textInfo' for the information about the current bok node. 
 
 ```html
 <div id="bubbles"> </div>
-<div id="textBoK"></div>
+<div id="textInfo"></div>
 ```
 
 In Javascript call the function visualizeBOKData(url, code).

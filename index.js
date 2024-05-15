@@ -302,7 +302,7 @@ exports.visualizeBOKData = async function (url, code) {
 
   // IDs for SVG and text elements
   const svgId = '#bubbles';
-  const textId = '#textBoK';
+  const textId = '#textInfo';
 
   // Fetching current version and year from Firebase
   const currentVersion = await firebase.getCurrentVersion();
@@ -325,7 +325,7 @@ exports.visualizeBOKData = async function (url, code) {
     let foundInOld = false;
     const oldVersion = version - 1;
     const svgId = '#bubbles';
-    const textId = '#textBoK';
+    const textId = '#textInfo';
     const bok = await firebase.getBokVersion("v" + version);
     const oldVersionMap = await firebase.getOldVersionsData();
     const currentVersion = await firebase.getCurrentVersion();
@@ -336,7 +336,7 @@ exports.visualizeBOKData = async function (url, code) {
       Object.keys(bok['concepts']).forEach(oldBokKey => {
         if (bok['concepts'][oldBokKey].code === codSelected) {
           // Displaying BoK data for the found concept
-          exports.getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, true, false);
+          exports.getBOKData(svgId, textId, bok, oldVersionMap, version, currentVersion, yearCurrentVersion, true, true);
           setTimeout(() => {
             // Browsing to the concept after displaying
             if (codSelected !== "" && codSelected !== "GIST") browseToConcept(codSelected);
@@ -639,7 +639,11 @@ exports.visualizeBOKData = async function (url, code) {
       const data = await firebase.getBokVersion("v" + version);
       const versionsData = await firebase.getOldVersionsData();
       // Display data for the older version
-      exports.getBOKData(svgId, textId, data, versionsData, version, currentVersion, yearCurrentVersion, false, true);
+      let oldVersionFlag = true;
+      console.log(version)
+      console.log(currentVersion)
+      if (version == currentVersion) oldVersionFlag = false;
+      exports.getBOKData(svgId, textId, data, versionsData, version, currentVersion, yearCurrentVersion, false, oldVersionFlag);
       setTimeout(() => {
         // Browsing to the concept after displaying
         if (code !== "" && code !== "GIST") browseToConcept(code);
@@ -680,7 +684,7 @@ exports.visualizeBOKData = async function (url, code) {
         yearToshow = yearCurrentVersion;
       } else if (isAnOldVersion) {
         // Displaying warning for an obsolete concept
-        currentLink = '<a style="color: red; font-weight: normal; cursor: pointer; text-decoration: underline;" href="https://bok.eo4geo.eu/" > the current version of the BoK </a>'
+        currentLink = "<a style='color: red; font-weight: normal; cursor: pointer; text-decoration: underline;' onClick='loadOldBokEvent(" + currentVersion +", \"\")' > the current version of the BoK </a>"
         textCurrent = '- <span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
       } else {
         // Displaying warning for an old version
@@ -693,7 +697,7 @@ exports.visualizeBOKData = async function (url, code) {
       text += "";
       text += '<h5>Versioning </h5><div id="oldVersions" style="text-indent: 2em;">';
       if (currentCod == 'GIST') currentCod = '';
-      if (isAnObsoleteId) text += '- <a href="https://bok.eo4geo.eu/' + currentCod + '">version ' + currentVersion + '.0 (' + yearCurrentVersion + ') (Current Bok Version)</a>';
+      if (isAnObsoleteId) text += "- <a style='color: #007bff; font-weight: 400; cursor: pointer; text-indent: 2em;' onClick='loadOldBokEvent(" + currentVersion +", \"" + currentCod  +"\")'>version " + currentVersion + ".0 (" + yearCurrentVersion + ") (Current Bok Version)</a>";
       text += '<p style="font-weight: bold;" >&rarr; You are viewing: version ' + cVersion + '.0 (' + yearToshow + ') ' + textCurrent + ' </p>';
       text += '</div>';
       domElement.innerHTML += text;
@@ -740,7 +744,7 @@ exports.visualizeBOKData = async function (url, code) {
         if (isAnOldVersion) {
           const obsNode = document.createElement('p');
           let textObs = '';
-          let currentLink = "<a style='color: red; font-weight: normal; cursor: pointer; text-decoration: underline;' href='https://bok.eo4geo.eu/'> the current version of the BoK </a>"
+          let currentLink = "<a style='color: red; font-weight: normal; cursor: pointer; text-decoration: underline;' onClick='loadOldBokEvent(" + currentVersion +", \"\")'> the current version of the BoK </a>"
           textObs += '<span style="color: red; font-weight: normal;">warning: this is an obsolete BoK concept - this concept is no longer present in ' + currentLink + '</span>';
           obsNode.innerHTML = textObs;
           mainNode.appendChild(obsNode);
