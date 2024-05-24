@@ -52,6 +52,18 @@ exports.getOldVersionsData = async function() {
   return versionsMap;
 }
 
+exports.checkUrls = async function(urls) {
+  for (const url of urls) {
+    try {
+      await fetchFirebase(url + 'current/version.json');
+      return url;
+    } catch (error) {
+      console.error('Invalid URL:', url);
+    }
+  }
+  console.error('No valid URL found');
+}
+
 // Function to fetch data from Firebase given a URL
 async function getDataFromFirebase(url) {
   try {
