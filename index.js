@@ -1,8 +1,6 @@
 var d3 = require("d3");
 var firebase = require("./firebase");
 
-URL_BASE = "";
-
 var Relationtype = {
   SIMILAR: "similarTo",
   PREREQUISITE: "prerequisites",
@@ -295,23 +293,14 @@ exports.parseBOKData = function (bokJSON) {
 
 };
 
-class visualizeInput {
-  constructor(svgId, textId, urls, conceptId, versions) {
-    this.svgId = svgId;
-    this.textId = textId;
-    this.urls = urls;
-    this.conceptId = conceptId;
-    this.versions = versions;
-  }
-}
-
 // Function for visualizing BoK data, taking URL and code as parameters
 exports.visualizeBOKData = async function (inputObject) {
+
   // Setting Firebase URL
-  firebase.setURL(await firebase.checkUrls(inputObject.urls));
+  await firebase.checkUrls(inputObject.urls);
 
   // IDs for SVG and text elements
-  const svgId = inputObject.svgId | '#bubbles';
+  const svgId = inputObject.svgId || '#bubbles';
   const textId = inputObject.textId;
 
   // Variable to check if versions should be displayed
@@ -653,8 +642,6 @@ exports.visualizeBOKData = async function (inputObject) {
       const versionsData = await firebase.getOldVersionsData();
       // Display data for the older version
       let oldVersionFlag = true;
-      console.log(version)
-      console.log(currentVersion)
       if (version == currentVersion) oldVersionFlag = false;
       exports.getBOKData(svgId, textId, data, versionsData, version, currentVersion, yearCurrentVersion, false, oldVersionFlag);
       setTimeout(() => {

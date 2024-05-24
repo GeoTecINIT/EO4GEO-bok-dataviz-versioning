@@ -4,11 +4,6 @@ let currentVersion;
 let yearCurrentVersion;
 let URL_BASE;
 
-// Function to set the base URL for Firebase
-exports.setURL = function(url) {
-  URL_BASE = url;
-}
-
 // Function to get the current BOK version from Firebase
 exports.getCurrentVersion = async function() {
   if (currentVersion) return currentVersion;
@@ -52,13 +47,15 @@ exports.getOldVersionsData = async function() {
   return versionsMap;
 }
 
+// Function to check which is the first working url and set it as URL_BASE
 exports.checkUrls = async function(urls) {
   for (const url of urls) {
     try {
-      await fetchFirebase(url + 'current/version.json');
-      return url;
+      URL_BASE = url;
+      currentVersion = await getDataFromFirebase('current/version.json');
+      return;
     } catch (error) {
-      console.error('Invalid URL:', url);
+      console.log('Invalid url: ' + url);
     }
   }
   console.error('No valid URL found');
@@ -74,5 +71,6 @@ async function getDataFromFirebase(url) {
     return await response.json();
   } catch (error) {
     console.error('There was a problem with the fetch operation:', error);
+    throw error;
   }
 }
