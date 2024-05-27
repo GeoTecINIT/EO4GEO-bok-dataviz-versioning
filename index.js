@@ -1,8 +1,6 @@
 var d3 = require("d3");
 var firebase = require("./firebase");
 
-URL_BASE = "";
-
 var Relationtype = {
   SIMILAR: "similarTo",
   PREREQUISITE: "prerequisites",
@@ -296,13 +294,17 @@ exports.parseBOKData = function (bokJSON) {
 };
 
 // Function for visualizing BoK data, taking URL and code as parameters
-exports.visualizeBOKData = async function (url, code) {
+exports.visualizeBOKData = async function (inputObject) {
+
   // Setting Firebase URL
-  firebase.setURL(url);
+  await firebase.checkUrls(inputObject.urls);
 
   // IDs for SVG and text elements
-  const svgId = '#bubbles';
-  const textId = '#textInfo';
+  const svgId = inputObject.svgId || '#bubbles';
+  const textId = inputObject.textId;
+
+  // Variable to check if versions should be displayed
+  const renderVersions = inputObject.versions;
 
   // Fetching current version and year from Firebase
   const currentVersion = await firebase.getCurrentVersion();
@@ -315,7 +317,7 @@ exports.visualizeBOKData = async function (url, code) {
   const oldVersionMap = await firebase.getOldVersionsData();
 
   // Variable to track the current concept code
-  let codSelected = code;
+  let codSelected = inputObject.conceptId;
 
   // Variable to track if the code is found
   let found = false;
@@ -640,8 +642,6 @@ exports.visualizeBOKData = async function (url, code) {
       const versionsData = await firebase.getOldVersionsData();
       // Display data for the older version
       let oldVersionFlag = true;
-      console.log(version)
-      console.log(currentVersion)
       if (version == currentVersion) oldVersionFlag = false;
       exports.getBOKData(svgId, textId, data, versionsData, version, currentVersion, yearCurrentVersion, false, oldVersionFlag);
       setTimeout(() => {
@@ -844,9 +844,7 @@ exports.visualizeBOKData = async function (url, code) {
         //display source documents of concept (if any):
         displayUnorderedList(d.sourceDocuments, "url", "Source documents", infoNode, "boksource");
 
-
-
-        displayVersions(d.nameShort, infoNode, version, bok.creationYear);
+        if(renderVersions) displayVersions(d.nameShort, infoNode, version, bok.creationYear);
 
         mainNode.appendChild(infoNode);
 
