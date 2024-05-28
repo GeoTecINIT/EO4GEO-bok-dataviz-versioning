@@ -12,27 +12,43 @@ npm i @eo4geo/find-in-bok-dataviz
 
 ## Usage
 
-Place a div and give it this ids.
-Use 'bubbles' for the graphical visualisation of the bok and 'textInfo' for the information about the current bok node. 
+Place a div and give it an id.
+If you want to show also the textual information, place a div and give it an id.
 
 ```html
 <div id="bubbles"> </div>
 <div id="textInfo"></div>
 ```
 
-In Javascript call the function visualizeBOKData(url, code).
+Create an object with the necessary fields. Below is an example of how to structure this object:
 
+```javascript
+const inputObject = {
+  svgId: '#bubbles',            // The ID of the SVG element where the visualization will be rendered
+  textId: '#textInfo',          // The ID of the text element where information will be displayed
+  urls: environment.URL_ARRAY,  // An array of URLs containing the data to be visualized
+  conceptId: id,                // The ID of the concept to visualize (optional)
+  versions: true                // A boolean indicating whether to include versions in the visualization (optional)
+};
+```
 
-- url : is the location BD
-- code : concept code to navigate to (optional)
+In Javascript call the function visualizeBOKData(paramsObject).
 
 
 ```javascript
 import * as bok from '@eo4geo/find-in-bok-dataviz';
 [...]
 
+const inputObject = {
+  svgId: '#bubbles',
+  textId: '#textInfo',
+  urls: environment.URL_ARRAY,
+  conceptId: id,
+  versions: true,
+};
+
 // will render the graphical view and the textual view from the current version in database
-bok.visualizeBOKData('https://eo4geo-uji.firebaseio.com/', null); 
+bok.visualizeBOKData(inputObject);
 
 ```
 
