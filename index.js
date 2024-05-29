@@ -311,13 +311,20 @@ exports.visualizeBOKData = async function (inputObject) {
 
   // Fetching current version and year from Firebase
   const currentVersion = await firebase.getCurrentVersion();
-  const yearCurrentVersion = await firebase.getYearCurrentVersion();
+  let yearCurrentVersion = null;
+
+  // Fetching map with old versions (key) and their release year (value)
+  let oldVersionMap = null;
+
+  if (renderVersions) {
+    [yearCurrentVersion, oldVersionMap] = await Promise.all([
+      firebase.getYearCurrentVersion(),
+      firebase.getOldVersionsData()
+    ]);
+  }
 
   // Fetching BoK data for the current version
   const bok = await firebase.getBokVersion("v" + currentVersion);
-
-  // Fetching map with old versions (key) and their release year (value)
-  const oldVersionMap = await firebase.getOldVersionsData();
 
   // Variable to track the current concept code
   let codSelected = inputObject.conceptId;
