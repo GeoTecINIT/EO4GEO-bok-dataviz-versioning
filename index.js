@@ -306,6 +306,9 @@ exports.visualizeBOKData = async function (inputObject) {
   // Variable to check if versions should be displayed
   const renderVersions = inputObject.versions;
 
+  // Variable to check if url should be updated with the concept id
+  const updateUrl = inputObject.updateUrl;
+
   // Fetching current version and year from Firebase
   const currentVersion = await firebase.getCurrentVersion();
   const yearCurrentVersion = await firebase.getYearCurrentVersion();
@@ -724,7 +727,6 @@ exports.visualizeBOKData = async function (inputObject) {
         titleNode.attributes = "#boktitle";
         titleNode.innerHTML = "[" + d.nameShort + "] " + d.name; //display Name and shortcode of concept:
         titleNode.style="margin-bottom: 0px;";
-        window.history.pushState("object or string", "Find In Bok", "/" + d.nameShort);
         var pNode = document.createElement("p");
         pNode.innerHTML = "Permalink: <a href= 'https://bok.eo4geo.eu/" + d.nameShort + "'> https://bok.eo4geo.eu/" + d.nameShort + "</a>";
         mainNode.appendChild(pNode);
@@ -822,7 +824,9 @@ exports.visualizeBOKData = async function (inputObject) {
           }
         }
 
-        window.history.pushState("object or string", "Find In Bok", "/" + d.nameShort);
+        //display concept in url
+        if (updateUrl) window.history.pushState("object or string", "Find In Bok", "/" + d.nameShort);
+
         //display description of subconcepts (if any):
         displayOrderedList(d.children, "name", "Subconcepts", infoNode, "boksubconcepts");
 

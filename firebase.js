@@ -49,16 +49,18 @@ exports.getOldVersionsData = async function() {
 
 // Function to check which is the first working url and set it as URL_BASE
 exports.checkUrls = async function(urls) {
-  for (const url of urls) {
-    try {
-      URL_BASE = url;
-      currentVersion = await getDataFromFirebase('current/version.json');
-      return;
-    } catch (error) {
-      console.log('Invalid url: ' + url);
+  if(!URL_BASE || !currentVersion){
+    for (const url of urls) {
+      try {
+        URL_BASE = url;
+        currentVersion = await getDataFromFirebase('current/version.json');
+        return;
+      } catch (error) {
+        console.log('Invalid url: ' + url);
+      }
     }
-  }
-  console.error('No valid URL found');
+    console.error('No valid URL found');
+  } 
 }
 
 // Function to fetch data from Firebase given a URL
