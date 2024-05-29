@@ -306,6 +306,9 @@ exports.visualizeBOKData = async function (inputObject) {
   // Variable to check if versions should be displayed
   const renderVersions = inputObject.versions;
 
+  // Variable to check if url should be updated with the concept id
+  const updateUrl = inputObject.updateUrl;
+
   // Fetching current version and year from Firebase
   const currentVersion = await firebase.getCurrentVersion();
   const yearCurrentVersion = await firebase.getYearCurrentVersion();
@@ -822,7 +825,7 @@ exports.visualizeBOKData = async function (inputObject) {
         }
 
         //display concept in url
-        if (renderVersions) window.history.pushState("object or string", "Find In Bok", "/" + d.nameShort);
+        if (updateUrl) window.history.pushState("object or string", "Find In Bok", "/" + d.nameShort);
 
         //display description of subconcepts (if any):
         displayOrderedList(d.children, "name", "Subconcepts", infoNode, "boksubconcepts");

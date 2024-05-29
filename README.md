@@ -28,7 +28,8 @@ const inputObject = {
   textId: '#textInfo',          // The ID of the text element where information will be displayed
   urls: environment.URL_ARRAY,  // An array of URLs containing the data to be visualized
   conceptId: id,                // The ID of the concept to visualize (optional)
-  versions: true                // A boolean indicating whether to include versions in the visualization (optional)
+  versions: true,               // A boolean indicating whether to include versions in the visualization (optional)
+  updateUrl: true               // A boolean indicating if url should be updated with the concept id (optional)
 };
 ```
 
@@ -45,6 +46,7 @@ const inputObject = {
   urls: environment.URL_ARRAY,
   conceptId: id,
   versions: true,
+  updateUrl: true
 };
 
 // will render the graphical view and the textual view from the current version in database
