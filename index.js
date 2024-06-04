@@ -850,7 +850,7 @@ exports.visualizeBOKData = async function (inputObject) {
         displayUnorderedList(d.demonstrableSkills, "description", "Skills", infoNode, "bokskills");
 
         //display contributors of concept (if any):
-        displayUnorderedList(d.contributors, "url", "Contributors", infoNode, "boksource");
+        displayUnorderedList(d.contributors, "url", "Contributors", infoNode, "bokcontributors");
 
         //display source documents of concept (if any):
         displayUnorderedList(d.sourceDocuments, "url", "Source documents", infoNode, "boksource");
