@@ -194,6 +194,9 @@ exports.parseBOKData = function (bokJSON) {
     SH: "#c7c7c7",
     TA: "#bcbd22",
     WB: "#07561e",
+    GN: "#1ca8dd",
+    SC: "#ffcc00",
+    SA: "#ff9f4a",
     no: "#17becf"
   };
 
@@ -476,6 +479,10 @@ exports.visualizeBOKData = async function (inputObject) {
         return d.parent === root || (d === root && d.children == null) ? "inline" : "none";
       })
       .style("font", '500 7px "Helvetica Neue", Helvetica, Arial, sans-serif')
+      .style("font-size", function (d) {
+        var textLengthFactor = Math.min(1, 30 / d.data.name.length);
+        return (7 * textLengthFactor) + "px";
+      })
       .each(function (d) { //This function inserts a label and adds linebreaks, avoiding lines > 13 characters
         var arr = d.data.name.split(" ");
         var arr2 = [];
