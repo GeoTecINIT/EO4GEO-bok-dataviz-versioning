@@ -1,6 +1,6 @@
 const d3 = require("d3");
 const firebase = require("./src/firebase.js");
-const parseBOKData = require("./src/parseBOKData.js");
+const { parseBOKData } = require("./src/parseBOKData.js");
 
 var svgId;
 var textId;

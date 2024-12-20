@@ -1,4 +1,4 @@
-const { CostumD3Node, CostumD3NodeCollection } = require('./d3Nodes.js');
+const { CostumD3Node, CostumD3NodeCollection } = require('./d3Node.js');
 
 exports.parseBOKData = function (bokJSON) {
 
